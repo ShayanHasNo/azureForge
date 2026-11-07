@@ -589,7 +589,7 @@ function engravePixel(ctx: Ctx, x: number, y: number, inlay: boolean, strength: 
   if (Math.abs(c.bu[i]) > 0.94) return; // never cut the edge itself
   c.layer[i] = L_ENGRAVE;
   c.shade[i] = 1.25 + (1 - strength) * 1.2;
-  if (inlay) c.addTint(i, ctx.inlayRgb, 0.82 * strength);
+  if (inlay) c.addTint(i, ctx.inlayRgb, 0.6 * strength);
 }
 
 function drawEngraving(ctx: Ctx, lay: BladeLayout) {
