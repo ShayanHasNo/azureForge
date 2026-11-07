@@ -46,7 +46,7 @@ try {
     const app = window.__app;
     app.state.gold = 2000;
     app.state.reputation = 40;
-    for (const m of ['iron', 'brass', 'silver', 'dragonsteel', 'starmetal', 'moonstone', 'gardenglass', 'walnut', 'garnet', 'riverstone', 'slate']) app.state.materials[m] = (app.state.materials[m] ?? 0) + 8;
+    for (const m of ['iron', 'brass', 'silver', 'oak', 'dragonsteel', 'starmetal', 'moonstone', 'gardenglass', 'walnut', 'garnet', 'riverstone', 'slate']) app.state.materials[m] = (app.state.materials[m] ?? 0) + 8;
     app.state.upgrades.push('smallanvil', 'shieldframe', 'loupe', 'bellows', 'wheel', 'gemsetter', 'finebench', 'collectionroom');
     app.state.journals.push('journal_folds', 'journal_tinkerer');
     app.refresh();
