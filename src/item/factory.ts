@@ -1,6 +1,6 @@
-import { newId, newSeed } from '../core/rng';
-import { palette } from '../data/options';
-import { Category, Item, ITEM_VERSION } from './types';
+import { newId, newSeed } from '../core/rng.js';
+import { palette } from '../data/options.js';
+import { Category, Item, ITEM_VERSION } from './types.js';
 
 export const SEGMENTS = 10;
 const zeros = (n: number) => new Array(n).fill(0);

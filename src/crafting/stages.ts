@@ -5,7 +5,7 @@
 import { clamp } from '../core/util';
 import { GEMS, GRIPS, hasMat, mat, METALS, STONES, UNIT_COST } from '../data/materials';
 import {
-  APPROACHES, DIRECTIONS, EMBLEMS, ENGRAVINGS, FINISHES, FULLERS, GUARDS, INTENTS, MOTIFS, OptionDef, PALETTES, POMMELS, PROFILES,
+  APPROACHES, DIRECTIONS, EMBLEMS, METHODS, ENGRAVINGS, FINISHES, FULLERS, GUARDS, INTENTS, MOTIFS, OptionDef, PALETTES, POMMELS, PROFILES,
   SHIELD_SHAPES, BOSSES, TEXTURES, TIPS, WRAP_COLORS, WRAPS, palette,
 } from '../data/options';
 import { StageId, TraditionDef } from '../data/traditions';
@@ -13,6 +13,8 @@ import { optionAvailable } from '../game/progress';
 import type { GameState } from '../game/state';
 import { CATEGORY_INFO } from '../item/factory';
 import type { Item } from '../item/types';
+import { RARE_COLORS } from '../item/damascus';
+import { methodOf, traditionAllowsDamascus } from './method';
 
 export interface StageCtx {
   item: Item;
@@ -54,8 +56,16 @@ const isBlade = (i: Item) => i.category !== 'shield';
 export const STAGES: Record<StageId, StageDef> = {
   design: {
     id: 'design',
-    controls: ({ item }) => {
-      const c: Control[] = [
+    controls: (ctx) => {
+      const { item } = ctx;
+      const c: Control[] = [];
+      if (item.category === 'dagger' && traditionAllowsDamascus(ctx.tradition)) {
+        c.push({
+          kind: 'options', key: 'method', label: 'Forging method', options: withAvailability(METHODS, ctx), get: () => methodOf(item), set: (v) => (item.design.method = v as any),
+          help: 'Damascus daggers carry one of 1000 numbered patterns. Your forging decides how clearly it shows — and some metal pairs can, very rarely, bloom into a prized colour.',
+        });
+      }
+      c.push(
         { kind: 'options', key: 'direction', label: 'Artistic direction', options: DIRECTIONS, get: () => item.design.direction, set: (v) => (item.design.direction = v) },
         { kind: 'options', key: 'motif', label: 'Decorative motif', options: MOTIFS, get: () => item.design.motif, set: (v) => (item.design.motif = v) },
         {
@@ -63,7 +73,7 @@ export const STAGES: Record<StageId, StageDef> = {
           set: (v) => { item.design.palette = v; if (item.hilt) item.hilt.wrapColor = palette(v).wrap; },
         },
         { kind: 'multi', key: 'intents', label: 'Intended qualities (up to two)', options: INTENTS, max: 2, get: () => item.design.intents, set: (v) => (item.design.intents = v), help: 'At appraisal, the piece is judged on whether it became what you intended.' },
-      ];
+      );
       if (isBlade(item)) {
         c.push({ kind: 'options', key: 'profile', label: 'Silhouette', options: PROFILES, get: () => item.blade!.profile, set: (v) => (item.blade!.profile = v) });
         c.push({ kind: 'options', key: 'tip', label: 'Tip', options: TIPS, get: () => item.blade!.tip, set: (v) => (item.blade!.tip = v) });
@@ -80,6 +90,7 @@ export const STAGES: Record<StageId, StageDef> = {
     id: 'materials',
     controls: ({ item, state, tradition }) => {
       const cost = UNIT_COST[item.category];
+      const damascus = methodOf(item) === 'damascus';
       const primaries = tradition.primaries.filter((m) => hasMat(m));
       const c: Control[] = [];
       if (item.category === 'shield') {
@@ -91,6 +102,9 @@ export const STAGES: Record<StageId, StageDef> = {
       if (tradition.id === 'experimental') {
         c.push({ kind: 'materials', key: 'fused', label: 'Metal to fuse into the primary (Alchemical Fusion)', materials: METALS.map((m) => m.id).filter((m) => m !== item.materials.primary), need: 1, get: () => item.materials.fusedWith ?? '', set: (v) => (item.materials.fusedWith = v || undefined) });
       }
+      if (damascus) {
+        c.unshift(info(`<b>Damascus:</b> the primary and secondary metals are stacked and folded together, so choose two different metals. Legend says a few pairings can bloom into a prized colour: ${RARE_COLORS.map((r) => `${mat(r.pair[0]).name} with ${mat(r.pair[1]).name}`).join(', ')}.`));
+      }
       if (item.hilt) c.push({ kind: 'materials', key: 'grip', label: 'Grip material', materials: GRIPS.map((g) => g.id), need: cost.grip, get: () => item.hilt!.gripMaterial, set: (v) => { item.hilt!.gripMaterial = v; item.materials.grip = v; } });
       void state;
       return c;
@@ -99,6 +113,10 @@ export const STAGES: Record<StageId, StageDef> = {
       const need = materialNeeds(item);
       for (const [id, n] of Object.entries(need)) if (owned(state, id) < n) return `You need ${n} ${mat(id).name} (you have ${owned(state, id)}). Visit the village or explore.`;
       if (tradition.id === 'experimental' && !item.materials.fusedWith) return 'Choose a metal to fuse.';
+      if (methodOf(item) === 'damascus') {
+        if (item.materials.secondary === item.materials.primary) return 'Damascus needs two different metals — choose a contrasting secondary.';
+        if (mat(item.materials.primary).kind !== 'metal') return 'Damascus is forged from metal — choose a metal primary.';
+      }
       if (tradition.id === 'patternwrights' && item.materials.secondary === item.materials.primary) return 'Patternwrights fold two different metals — choose a contrasting secondary.';
       return null;
     },
@@ -118,6 +136,11 @@ export const STAGES: Record<StageId, StageDef> = {
     id: 'fusion',
     controls: ({ item }) => [info(`Fuse <b>${mat(item.materials.primary).name}</b> with <b>${item.materials.fusedWith ? mat(item.materials.fusedWith).name : '?'}</b>. Unstable alloys may develop strange, one-of-a-kind traits.`)],
     minigame: ({ item }) => ({ id: 'fusion', params: { second: item.materials.fusedWith } }),
+  },
+  damascus: {
+    id: 'damascus',
+    controls: ({ item }) => [info(`Stack <b>${mat(item.materials.primary).name}</b> and <b>${mat(item.materials.secondary).name}</b> into a billet, fold it, then etch it to reveal the pattern. Clean folds and a well-timed etch make the pattern stand out — though even perfect work never shows it at 100%.`)],
+    minigame: ({ item }) => ({ id: 'fold', params: { mode: 'damascus', secondary: item.materials.secondary } }),
   },
   fold: {
     id: 'fold',
@@ -191,7 +214,7 @@ export const STAGES: Record<StageId, StageDef> = {
 
   surface: {
     id: 'surface',
-    controls: (ctx) => [{ kind: 'options', key: 'texture', label: 'Surface texture', options: withAvailability(TEXTURES, ctx), get: () => ctx.item.surface.texture, set: (v) => (ctx.item.surface.texture = v), help: 'Each texture is scored differently when you work it.' }],
+    controls: (ctx) => [{ kind: 'options', key: 'texture', label: 'Surface texture', options: withAvailability(methodOf(ctx.item) === 'damascus' ? TEXTURES.filter((t) => t.id !== 'layered') : TEXTURES, ctx), get: () => ctx.item.surface.texture, set: (v) => (ctx.item.surface.texture = v), help: 'Each texture is scored differently when you work it.' }],
     validate: ({ item }) => (item.surface.texture === 'layered' && item.materials.secondary === item.materials.primary ? 'Layered patterns need a contrasting secondary metal.' : null),
     minigame: ({ item, tradition, state }) => ({ id: 'polish', params: { texture: item.surface.texture, mode: tradition.surfaceMode ?? 'polish', wheel: state.upgrades.includes('wheel') } }),
   },

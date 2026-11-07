@@ -4,7 +4,7 @@ This document covers the Phase 0 deliverables: the feature breakdown, the system
 
 ## Technology
 
-- **TypeScript + Vite.** Static web app. There's no backend, and all state lives in `localStorage`.
+- **TypeScript + Vite.** Static web app. All game state lives in `localStorage`. The one exception is the optional online market showcase: a Vercel function (`api/showcase.ts`, logic in `server/`) backed by Upstash Redis, with an in-memory stand-in during `vite dev`/`preview`. Modules that function imports use explicit `.js` import extensions, because Vercel runs it as plain Node ESM (a test enforces this).
 - **Canvas 2D** draws the workshop scene, the procedural item sprites and every minigame. All of it is pixel art, scaled with nearest-neighbour.
 - **DOM/CSS** handles menus, panels and crafting decisions, so the UI stays accessible and keyboard-navigable.
 - **Web Audio** synthesises all sound at runtime: SFX, ambience and generative music. There are no audio files.
@@ -54,6 +54,8 @@ The rules that keep this architecture extensible:
 - **Stages are data.** `StageDef` declares controls, validation and a minigame. A tradition is an ordered list of stage IDs, so adding, removing or reordering stages needs no engine changes. Experimental reorders them at runtime.
 - **Options are data.** An option's `gate` can be a tradition, a tool, a journal, a material-mastery level or a category. `optionAvailable()` evaluates gates in one place.
 
+**Damascus** (`item/damascus.ts`): a dagger whose `design.method` is `damascus` gets a `damascus` stage (`crafting/method.ts` swaps it in for `fold`, or inserts it after preparation). The pattern index (1–1000) comes from `item.seed`. The pattern's shape comes from the index alone (`patternSpec`, `damascusField`), so an index always looks the same. Visibility and rare colour are seeded rolls on the forge quality, so the server can re-derive and verify them. The data lives in `surface.damascus` and is drawn by `drawDamascus` in the renderer. It is cosmetic: stats and value ignore it.
+
 Adding new content:
 
 | To add | Do this |
@@ -101,6 +103,7 @@ Saving stores this structure verbatim. The tests confirm that a JSON round-trip 
 | Anneal | Glassgarden prep | following a cooling curve, smoothness | material quality |
 | Fusion | Experimental prep | holding a target mix under turbulence | fusion mix, mutation odds |
 | Fold | Patternwrights | alignment and off-beat strike per fold | layer count, pattern clarity |
+| Fold, Damascus mode | Damascus forging (daggers) | folding as above, then pulling the blade from the etching bath at peak contrast | forge quality → `surface.damascus` (index from seed, visibility = forge + seeded roll, capped at 98.5%; rare colour roll for certain metal pairs) |
 | Grind (symmetric/organic/delicate/free) | Structural refinement | removal-only edge alignment vs a target, smoothness | final edge deviations (shield: planished dents) |
 | Polish | Surface | per-texture criteria: coverage, stroke straightness, dab spacing, varied coverage, steadiness | 8 zone qualities |
 | Assembly (hilt/inlay/rim) | Hilt, Mountain stone setting | positional and rotational alignment | guard/pommel offsets and tilt, stone placements, rim gap |

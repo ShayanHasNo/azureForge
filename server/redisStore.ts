@@ -1,0 +1,32 @@
+// Showcase store on Upstash Redis (add "Upstash Redis" to the Vercel project
+// from the Marketplace — it injects the REST URL and token below).
+
+import { Redis } from '@upstash/redis';
+import type { ShowcaseStore } from './showcaseCore.js';
+
+export function redisConfig(env: Record<string, string | undefined>): { url: string; token: string } | null {
+  const url = env.KV_REST_API_URL || env.UPSTASH_REDIS_REST_URL;
+  const token = env.KV_REST_API_TOKEN || env.UPSTASH_REDIS_REST_TOKEN;
+  return url && token ? { url, token } : null;
+}
+
+export class RedisStore implements ShowcaseStore {
+  private r: Redis;
+  constructor(cfg: { url: string; token: string }) {
+    this.r = new Redis({ url: cfg.url, token: cfg.token, automaticDeserialization: false });
+  }
+  async get(key: string) { return (await this.r.get<string>(key)) ?? null; }
+  async mget(keys: string[]) { return keys.length ? ((await this.r.mget<(string | null)[]>(...keys)) ?? []) : []; }
+  async set(key: string, value: string, ttlSec?: number) { if (ttlSec) await this.r.set(key, value, { ex: ttlSec }); else await this.r.set(key, value); }
+  async del(...keys: string[]) { if (keys.length) await this.r.del(...keys); }
+  async incr(key: string, ttlSec: number) {
+    const n = await this.r.incr(key);
+    if (n === 1) await this.r.expire(key, ttlSec);
+    return n;
+  }
+  async zadd(key: string, score: number, member: string) { await this.r.zadd(key, { score, member }); }
+  async zrevrange(key: string, start: number, stop: number) { return (await this.r.zrange<string[]>(key, start, stop, { rev: true })).map(String); }
+  async zrange(key: string, start: number, stop: number) { return (await this.r.zrange<string[]>(key, start, stop)).map(String); }
+  async zrem(key: string, ...members: string[]) { if (members.length) await this.r.zrem(key, ...members); }
+  async zcard(key: string) { return await this.r.zcard(key); }
+}

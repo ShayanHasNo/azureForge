@@ -11,6 +11,7 @@ import { engravingPaths, pathSampleCount } from '../item/patterns';
 import type { Category, Item } from '../item/types';
 import type { MinigameResult } from '../minigames/types';
 import { APPLY, generateBlemishes } from './apply';
+import { methodOf, stagesForMethod } from './method';
 
 /** Synthetic result for a minigame at skill s (0..1) with natural variation. */
 export function syntheticResult(stage: string, item: Item, skill: number, r: Rng): MinigameResult {
@@ -40,6 +41,9 @@ export function syntheticResult(stage: string, item: Item, skill: number, r: Rng
     }
     case 'fold':
       Object.assign(data, { layers: Math.round(8 + score * 24), clarity: score });
+      break;
+    case 'damascus':
+      Object.assign(data, { layers: Math.round(16 + score * 48), forge: score });
       break;
     case 'fusion':
       Object.assign(data, { mix: 0.5, volatility: err });
@@ -76,7 +80,8 @@ export function simulateCraft(spec: SimSpec): Item {
   if (spec.tradition === 'experimental') item.materials.fusedWith = 'copper';
   spec.setup?.(item);
   const r = seededRng(seed, 'sim' + spec.skill);
-  for (const stage of tradition(item.tradition).stages) {
+  const base = tradition(item.tradition).stages;
+  for (const stage of stagesForMethod(base, methodOf(item), base)) {
     if (stage === 'finish') item.blemishes = generateBlemishes(item);
     if (stage === 'engrave' && item.decoration.engraving.pattern === 'none') continue;
     const fn = APPLY[stage];

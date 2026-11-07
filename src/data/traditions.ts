@@ -2,7 +2,7 @@
 // material palette and decorative language — they are not cosmetic skins.
 
 export type StageId =
-  | 'design' | 'materials' | 'heat' | 'anneal' | 'fusion' | 'fold' | 'hammer' | 'grind'
+  | 'design' | 'materials' | 'heat' | 'anneal' | 'fusion' | 'fold' | 'damascus' | 'hammer' | 'grind'
   | 'inlay' | 'surface' | 'hilt' | 'engrave' | 'infusion' | 'finish' | 'appraisal';
 
 export interface TraditionDef {
@@ -99,6 +99,7 @@ export const STAGE_INFO: Record<StageId, { name: string; icon: string; blurb: st
   anneal: { name: 'Annealing', icon: '❄', blurb: 'Cool the crystal slowly along its curve.' },
   fusion: { name: 'Alchemical Fusion', icon: '⚗', blurb: 'Fuse two metals into one unstable alloy.' },
   fold: { name: 'Pattern Folding', icon: '≋', blurb: 'Fold the layers to build the pattern.' },
+  damascus: { name: 'Damascus Forging', icon: '❖', blurb: 'Stack, fold and etch the billet into its pattern.' },
   hammer: { name: 'Initial Shaping', icon: '⚒', blurb: 'Draw out the silhouette under the hammer.' },
   grind: { name: 'Structural Refinement', icon: '◐', blurb: 'Choose the construction and grind the profile true.' },
   inlay: { name: 'Stone Setting', icon: '◈', blurb: 'Set mountain stones into the piece.' },

@@ -2,7 +2,7 @@
 // space — none is strictly better than another. Potential (props) is separate
 // from craftsmanship: props only describe what a material *can* become.
 
-import { rampFrom } from '../core/util';
+import { rampFrom } from '../core/util.js';
 
 export type MaterialKind = 'metal' | 'crystal' | 'wood' | 'leather' | 'bone' | 'gem' | 'stone';
 

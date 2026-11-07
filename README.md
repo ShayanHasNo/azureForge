@@ -71,6 +71,8 @@ Every minigame supports mouse, touch and keyboard. Its controls are shown before
 - **10 metals** (plus woods, leathers, gems and stones), each with real trade-offs. Material mastery unlocks creative options, never stat bonuses.
 - **Procedural sprites** built in 8 layers: silhouette, material shading, secondary details, 15 textures, hilt and wrap, decoration (your traced engraving, inscription, emblems, gems, stones, constellations), 16 finishes, and effects.
 - **Sword, dagger and shield** item categories, each with its own statistics.
+- **Damascus daggers.** Choose the *Damascus* forging method for a dagger to stack, fold and etch two metals. Every Damascus dagger carries one of **1000 numbered patterns**, fixed by its steel: every #437 looks like every other #437, and a few indexes are named. Your forging and etching, plus a little luck, decide the pattern's **visibility**. Even flawless work never shows it at 100%. A handful of metal pairings can, very rarely, bloom into a **prized colour**. The finished dagger gets a certificate with its index, visibility and colour, and *Collection → Damascus index* tracks which of the 1000 patterns you've forged. Damascus is purely cosmetic: it never changes stats or value.
+- **Market showcase.** Show any finished piece to other players from its inspection page, and browse everyone's pieces, newest or rarest, in *Village → Showcase*.
 - **A village** with nine villagers. Each has their own tastes and story, and reacts to the actual properties of what you show them. Villagers post open-ended requests ("something that reminds me of the mountains…").
 - **Predictable markets, exploration and journals.**
   - Five market stalls keep fixed schedules.
@@ -80,6 +82,15 @@ Every minigame supports mouse, touch and keyboard. Its controls are shown before
 - **Synthesized audio.** Generative ambient music, fire, rain, wind and village ambience, plus crafting sounds. Music, ambience and crafting sounds each have their own volume.
 - **Accessibility:** a Relaxed crafting mode, reduced motion, high-contrast panels, interface scaling and keyboard play.
 - **Saving.** The game autosaves after every stage, keeps a rolling backup, and supports JSON export/import. An unfinished piece is saved and can be resumed.
+
+## The online market showcase
+
+The showcase is the game's only online feature, served by a small Vercel function (`api/showcase.ts`) backed by Redis.
+
+- **Locally**, `npm run dev` and `npm run preview` serve the same API from an in-memory store, so it works with no setup. Posts disappear when the server stops.
+- **On Vercel**, connect a Redis store to the project: *Storage → Marketplace → Upstash Redis*, then redeploy. The integration injects `KV_REST_API_URL` / `KV_REST_API_TOKEN` (`UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` also work). Until a store is connected, the Showcase tab says the market is quiet and the rest of the game is unaffected.
+
+Posts are public and only lightly moderated: names are length-capped and stripped of control characters. Crafting history never leaves the player's save. Every field is validated against the game's own data, and a Damascus pattern is checked against the blade's seed, so a forged index or colour is rejected. Each address may post 5 pieces an hour. The newest 1000 posts are kept, each for up to 90 days, and players can withdraw their own.
 
 ## Tests
 

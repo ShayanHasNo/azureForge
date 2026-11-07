@@ -18,14 +18,26 @@ import { toCanvas } from '../../render/pixel';
 import { btn, itemThumb, modal, spriteCanvas, statRow, tabs, toast } from '../dom';
 import { Showcase } from '../showcase';
 import { giveFlow, sellFlow } from './actions';
+import { damascusCard } from '../damascusCard';
+import { describeDamascus, rareColor } from '../../item/damascus';
+import { showcaseButtons } from './showcase';
 
 const MATERIAL_STATS = new Set(['flexibility', 'weight', 'rarity']);
 
-export function openItem(app: App, item: Item, opts: { fresh?: boolean; onChange?: () => void } = {}) {
+export interface OpenItemOpts {
+  fresh?: boolean;
+  onChange?: () => void;
+  /** Viewing someone else's piece (online showcase): no renaming, no actions. */
+  readOnly?: boolean;
+  /** Shown for read-only pieces. */
+  byline?: string;
+}
+
+export function openItem(app: App, item: Item, opts: OpenItemOpts = {}) {
   const s = app.state;
   const st = item.stats!;
   const m = modal(opts.fresh ? 'Inspection & Appraisal' : displayName(item), { onClose: () => { sc.destroy(); opts.onChange?.(); } });
-  const owned = !item.sold && !item.giftedTo;
+  const owned = !opts.readOnly && !item.sold && !item.giftedTo;
   const wrap = el('div', { class: 'inspect' });
   const show = el('div', { class: 'showcase' });
   const sc = new Showcase(item, 'front', { w: 380, h: 460 }, { reducedMotion: s.settings.reducedMotion });
@@ -54,17 +66,19 @@ export function openItem(app: App, item: Item, opts: { fresh?: boolean; onChange
   setView('front');
 
   const info = el('div', {});
-  const nameInput = el('input', { class: 'namefield', value: displayName(item), 'aria-label': 'Item name', maxlength: 48 }) as HTMLInputElement;
+  const nameInput = el('input', { class: 'namefield', value: displayName(item), 'aria-label': 'Item name', maxlength: 48, readonly: !!opts.readOnly }) as HTMLInputElement;
   nameInput.onchange = () => { item.customName = nameInput.value.trim() || undefined; m.setTitle(opts.fresh ? 'Inspection & Appraisal' : displayName(item)); app.save(); };
   const reroll = btn('↻', () => { item.seed = item.seed; const n = generateName({ ...item, seed: (item.seed + Date.now()) >>> 0 }); item.customName = n; nameInput.value = n; app.save(); }, 'small ghost', { title: 'Suggest another name' });
-  info.append(
-    el('div', { class: 'row' }, nameInput, reroll),
+  info.append(...[
+    el('div', { class: 'row' }, nameInput, opts.readOnly ? null : reroll),
+    opts.byline ? el('p', { class: 'small muted' }, opts.byline) : null,
     el('div', { class: 'row', style: { margin: '6px 0' } },
       el('span', { class: 'tag gold' }, st.grade), el('span', { class: 'tag' }, st.rarityLabel), el('span', { class: 'tag', style: { background: tradition(item.tradition).color } }, tradition(item.tradition).name),
       el('span', { class: 'tag cool' }, CATEGORY_INFO[item.category].name), el('span', { class: 'small muted' }, `◉ ${st.value} gold · by ${item.creator}, day ${item.createdDay} of ${item.createdSeason}`),
     ),
     el('p', {}, item.description ?? generateDescription(item)),
-  );
+    damascusCard(item),
+  ].filter((n): n is HTMLElement => !!n));
   if (item.sold) info.append(el('p', { class: 'muted' }, 'This piece was sold.'));
   if (item.giftedTo) info.append(el('p', { class: 'muted' }, `This piece now belongs to ${item.giftedTo[0].toUpperCase() + item.giftedTo.slice(1)}.`));
 
@@ -72,7 +86,7 @@ export function openItem(app: App, item: Item, opts: { fresh?: boolean; onChange
   tabs(tabHost, [['stats', 'Statistics'], ['materials', 'Composition'], ['history', 'Crafting history'], ['compare', 'Compare']], (id, body) => {
     if (id === 'stats') statsTab(body, item, s.settings.showDetailedStats);
     if (id === 'materials') materialsTab(body, item);
-    if (id === 'history') historyTab(body, item);
+    if (id === 'history') { if (item.history.length || !opts.readOnly) historyTab(body, item); else body.append(el('p', { class: 'muted' }, 'The maker keeps their crafting notes private.')); }
     if (id === 'compare') compareTab(body, item, app);
   });
   info.append(tabHost);
@@ -103,10 +117,19 @@ export function openItem(app: App, item: Item, opts: { fresh?: boolean; onChange
         removeFromDisplays(s, item.id); s.gallery.push(item.id); audio.sfx('place'); toast('Placed in the collection room.'); app.refresh();
       }));
     }
+    m.foot.append(...showcaseButtons(app, item));
     m.foot.append(btn('Give…', () => giveFlow(app, item, () => m.close())), btn('Sell…', () => sellFlow(app, item, () => m.close())));
   }
   m.foot.append(btn(opts.fresh ? 'Admire & close' : 'Close', () => m.close(), 'primary'));
   if (opts.fresh) setTimeout(() => toast(`“${displayName(item)}” — ${st.grade}, ${st.rarityLabel}.`), 300);
+  const dm = item.surface.damascus;
+  if (opts.fresh && dm) {
+    const rc = rareColor(dm.color);
+    setTimeout(() => {
+      toast(`❖ ${describeDamascus(dm)}`, 6500);
+      if (rc) { audio.sfx('success'); toast(`✦ Incredibly rare: a ${rc.name} Damascus bloom!`, 8000); }
+    }, 900);
+  }
 }
 
 function detailCanvas(item: Item): HTMLCanvasElement {
@@ -167,7 +190,7 @@ function materialsTab(body: HTMLElement, item: Item) {
   if (item.hilt && item.blade) body.append(el('p', { class: 'small' }, `${optionName('guard', item.hilt.guard)} guard, ${optionName('wrap', item.hilt.wrap)}, ${optionName('pommel', item.hilt.pommel)} pommel.`));
   body.append(el('p', { class: 'small' }, `${optionName('texture', item.surface.texture)} surface · ${optionName('finish', item.finish.finish)} finish${item.decoration.engraving.pattern !== 'none' ? ` · ${optionName('engraving', item.decoration.engraving.pattern)} engraving` : ''}${item.decoration.emblem !== 'none' ? ` · ${optionName('emblem', item.decoration.emblem)} emblem` : ''}.`));
   if (item.mutations.length) body.append(el('p', {}, 'Mutations: ', ...item.mutations.map((x) => el('span', { class: 'tag cool' }, MUTATION_WORDS[x] ?? x))));
-  body.append(el('h3', {}, 'Signature'), el('p', { class: 'small muted' }, `Seed ${item.seed.toString(16)} · visual signature ${renderItem(item).hash()} · id ${item.id}`), el('p', {}, ...item.tags.slice(0, 24).map((t) => el('span', { class: 'tag' }, t))));
+  body.append(el('h3', {}, 'Signature'), el('p', { class: 'small muted' }, `Seed ${item.seed.toString(16)} · visual signature ${renderItem(item).hash()} · id ${item.id}${item.surface.damascus ? ` · ${describeDamascus(item.surface.damascus)}` : ''}`), el('p', {}, ...item.tags.slice(0, 24).map((t) => el('span', { class: 'tag' }, t))));
 }
 
 function historyTab(body: HTMLElement, item: Item) {

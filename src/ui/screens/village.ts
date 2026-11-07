@@ -12,13 +12,15 @@ import { boughtToday, JOURNALS, LOCATIONS, MERCHANTS } from '../../village/world
 import { btn, modal, tabs, toast } from '../dom';
 import { portrait } from '../portrait';
 import { fennickHere, giveFlow, pickItem } from './actions';
+import { showcaseTab } from './showcase';
 
 export function openVillage(app: App, initial = 'market') {
   const s = app.state;
   const m = modal(`The Village — ${weekday(s.day)} ${phaseName(s)}`);
   m.body.style.padding = '0';
-  const t = tabs(m.body, [['market', 'Market'], ['board', `Notice board (${s.requests.length})`], ['people', 'Villagers'], ['explore', 'Explore']], (id, body) => {
+  const t = tabs(m.body, [['market', 'Market'], ['showcase', 'Showcase'], ['board', `Notice board (${s.requests.length})`], ['people', 'Villagers'], ['explore', 'Explore']], (id, body) => {
     if (id === 'market') market(body);
+    if (id === 'showcase') showcaseTab(app, body);
     if (id === 'board') board(body);
     if (id === 'people') people(body);
     if (id === 'explore') explore(body);

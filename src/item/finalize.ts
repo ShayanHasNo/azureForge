@@ -1,6 +1,6 @@
-import { computeTags, generateDescription, generateName } from './describe';
-import { computeStats } from './stats';
-import type { Item } from './types';
+import { computeTags, generateDescription, generateName } from './describe.js';
+import { computeStats } from './stats.js';
+import type { Item } from './types.js';
 
 /** Recompute all derived data (stats, tags, description). Pure function of the item's stored parameters. */
 export function refreshDerived(item: Item, rename = false): Item {

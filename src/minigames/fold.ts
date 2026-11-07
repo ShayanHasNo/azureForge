@@ -11,16 +11,24 @@
 //
 // data: { layers: 2^(folds+1) capped at 64, clarity: 0..1 }
 // details: alignment, timing, consistency, folds
+//
+// Damascus mode (params.mode === 'damascus', daggers): the billet is folded
+// 4–6 times, then dipped in the etching bath. Contrast rises, slows, peaks and
+// then over-etches; the player pulls the blade at the peak. The forge score is
+// 0.75 folding + 0.25 etch, and the dagger's numbered pattern shows in the
+// preview as it emerges.
+// data (damascus): { layers, clarity, forge }
 
 import { noise2, seededRng } from '../core/rng';
 import { clamp, hexToRgb, mean, stdev, type RGB } from '../core/util';
 import { hasMat, mat } from '../data/materials';
 import { cloneItem } from '../item/factory';
+import { patternIndexFor } from '../item/damascus';
 import type { Item } from '../item/types';
 import { BaseMinigame, COLORS, MH, MW } from './base';
 import { gradeOf, type MinigameDef, type MinigameEnv } from './types';
 
-type Phase = 'intro' | 'flip' | 'align' | 'beat' | 'merge' | 'done';
+type Phase = 'intro' | 'flip' | 'align' | 'beat' | 'merge' | 'etch' | 'done';
 
 const BX0 = 132, BW = 200, BH = 64, HALF = BW / 2;
 const BASE_Y = 136; // top of the flat billet
@@ -72,10 +80,18 @@ class Fold extends BaseMinigame {
   // preview
   private preview: Item;
   private previewCanvas: HTMLCanvasElement;
+  // damascus etch
+  private damascus: boolean;
+  private etchPeak = 3;
+  private etchTol = 0.3;
+  private etchScore = 0;
+  private etchPulled = -1;
+  private lastPreviewT = 0;
 
   constructor(env: MinigameEnv) {
     super(env);
-    this.totalFolds = Math.round(this.tune(3, 6));
+    this.damascus = env.params?.mode === 'damascus';
+    this.totalFolds = Math.round(this.damascus ? this.tune(4, 6) : this.tune(3, 6));
     const pid = env.item.materials.primary, sid = env.item.materials.secondary;
     const pa = hasMat(pid) ? mat(pid).palette : env.material.palette;
     const pb = hasMat(sid) ? mat(sid).palette : mat('brass').palette;
@@ -92,8 +108,40 @@ class Fold extends BaseMinigame {
     this.preview = cloneItem(env.item);
     this.preview.surface.layers = 2;
     this.preview.surface.patternClarity = 0.9;
+    if (this.damascus) {
+      this.preview.surface.damascus = { index: patternIndexFor(env.item.seed), visibility: 0.12, forge: 0, layers: 2 };
+      this.etchPeak = this.rng.range(2.2, 3.4);
+      this.etchTol = this.tune(0.38, 0.16);
+    }
     this.previewCanvas = this.sprite(this.preview);
     this.status();
+  }
+
+  /** Contrast of the etched pattern at time t in the bath (0..1). Eases out to the peak, then over-etches. */
+  private etchContrast(t: number) {
+    const k = t / this.etchPeak;
+    if (k <= 1) return 1 - Math.pow(1 - k, 2.4);
+    return Math.max(0, 1 - Math.pow(k - 1, 1.3) * 1.5);
+  }
+
+  private setPreviewVisibility(v: number) {
+    const d = this.preview.surface.damascus;
+    if (!d) return;
+    d.visibility = clamp(v, 0.02, 0.95);
+    d.layers = Math.min(64, Math.pow(2, this.folds + 1));
+    this.previewCanvas = this.sprite(this.preview);
+  }
+
+  private pullFromBath() {
+    if (this.phase !== 'etch' || this.etchPulled >= 0) return;
+    const t = this.phaseT;
+    this.etchPulled = t;
+    this.etchScore = this.accFrom(Math.abs(t - this.etchPeak), this.etchTol, 3);
+    const x = this.sx(BX0 + HALF);
+    if (this.etchScore > 0.92) { this.floatText('Perfect etch!', x, BASE_Y - 30, COLORS.gold); this.env.audio.sfx('hammerPerfect', { pitch: 1.4 }); }
+    else if (this.etchScore > 0.6) { this.floatText(t < this.etchPeak ? 'A touch early' : 'A touch late', x, BASE_Y - 30, COLORS.good); this.env.audio.sfx('snap'); }
+    else { this.floatText(t < this.etchPeak ? 'Too early — pale' : 'Over-etched', x, BASE_Y - 30, COLORS.bad); this.env.audio.sfx('hammerMiss'); }
+    this.setPreviewVisibility(0.15 + 0.8 * this.clarity() * this.etchContrast(t));
   }
 
   private status() {
@@ -229,9 +277,17 @@ class Fold extends BaseMinigame {
     const layers = Math.min(64, Math.pow(2, this.folds + 1));
     this.preview.surface.layers = layers;
     this.preview.surface.patternClarity = this.clarity();
-    this.previewCanvas = this.sprite(this.preview);
+    if (this.damascus) this.setPreviewVisibility(0.12 + 0.3 * this.clarity() * (this.folds / this.totalFolds));
+    else this.previewCanvas = this.sprite(this.preview);
     this.floatText(`${layers} layers`, this.sx(BX0 + HALF), BASE_Y - 12, COLORS.cream);
-    if (this.folds >= this.totalFolds) return this.complete();
+    if (this.folds >= this.totalFolds) {
+      if (this.damascus) {
+        this.env.onStatus?.('Etching');
+        this.env.audio.sfx('fold', { pitch: 0.7 });
+        return this.enter('etch');
+      }
+      return this.complete();
+    }
     this.status();
     this.enter('flip');
   }
@@ -246,10 +302,21 @@ class Fold extends BaseMinigame {
     const alignment = mean(this.aligns), timing = mean(this.timings);
     const accuracy = mean(this.accs);
     const consistency = 1 - clamp(stdev(this.accs) * 2);
-    const score = clamp(accuracy * 0.85 + consistency * 0.15);
+    const foldScore = clamp(accuracy * 0.85 + consistency * 0.15);
     const clarity = this.clarity();
     const layers = Math.min(64, Math.pow(2, this.totalFolds + 1));
     this.env.audio.sfx('success');
+    if (this.damascus) {
+      const forge = clamp(foldScore * 0.75 + this.etchScore * 0.25);
+      const g = gradeOf(forge);
+      return this.finish({
+        score: forge,
+        details: { alignment, timing, consistency, etch: this.etchScore, folds: this.totalFolds },
+        data: { layers, clarity: Math.round(clarity * 1000) / 1000, forge: Math.round(forge * 10000) / 10000 },
+        summary: `${g} Damascus forging — ${layers} layers, ${this.etchScore > 0.85 ? 'a perfectly timed etch' : this.etchScore > 0.55 ? 'a good etch' : 'an uneven etch'}.`,
+      });
+    }
+    const score = foldScore;
     const g = gradeOf(score);
     this.finish({
       score,
@@ -267,6 +334,7 @@ class Fold extends BaseMinigame {
     if (this.phase === 'align') {
       this.drag = { active: true, x0: this.pointer.x, e0: this.e, t0: this.t, moved: 0 };
     } else if (this.phase === 'beat') this.strike();
+    else if (this.phase === 'etch') this.pullFromBath();
   }
   protected onPointerMove() {
     if (this.phase === 'align' && this.drag.active && this.pointer.down) {
@@ -323,6 +391,19 @@ class Fold extends BaseMinigame {
       case 'merge':
         if (this.phaseT >= 0.7) this.finishFold();
         break;
+      case 'etch': {
+        if (this.etchPulled < 0) {
+          if (this.wasPressed('Space', 'Enter')) this.pullFromBath();
+          // live preview of the emerging pattern (throttled)
+          if (this.t - this.lastPreviewT > 0.25) {
+            this.lastPreviewT = this.t;
+            this.setPreviewVisibility(0.12 + 0.8 * this.clarity() * this.etchContrast(this.phaseT));
+          }
+          if (this.rng.chance(dt * 10)) this.spawn(BX0 + this.rng.range(0, BW), ANVIL_Y - 4, { n: 1, vy: -18, spread: 6, life: 0.8, color: 'rgba(190,230,170,0.7)', size: 1 });
+          if (this.phaseT > this.etchPeak * 2.2) this.pullFromBath();
+        } else if (this.phaseT - this.etchPulled > 1.0) this.complete();
+        break;
+      }
       default:
         break;
     }
@@ -351,6 +432,9 @@ class Fold extends BaseMinigame {
       case 'intro':
       case 'done':
         this.drawFlat(ctx, pat);
+        break;
+      case 'etch':
+        this.drawEtch(ctx, pat);
         break;
       case 'flip': {
         const k = clamp(this.phaseT / 0.8);
@@ -426,6 +510,35 @@ class Fold extends BaseMinigame {
     if (this.phase === 'beat') this.drawTrack(ctx);
   }
 
+  private drawEtch(ctx: CanvasRenderingContext2D, pat: HTMLCanvasElement) {
+    const t = this.etchPulled >= 0 ? this.etchPulled : this.phaseT;
+    const c = this.etchContrast(t);
+    const lift = this.etchPulled >= 0 ? Math.min(30, (this.phaseT - this.etchPulled) * 60) : 0;
+    const y = BASE_Y - lift;
+    // the bath
+    ctx.fillStyle = 'rgba(60,90,60,0.55)';
+    ctx.fillRect(BX0 - 16, BASE_Y + 8, BW + 32, BH + 4);
+    ctx.drawImage(pat, BX0, y);
+    // un-etched steel is a flat grey veil; contrast lifts it away
+    ctx.fillStyle = `rgba(150,150,158,${(1 - c) * 0.85})`;
+    ctx.fillRect(BX0, y, BW, BH);
+    // over-etching darkens and pits the surface
+    if (t > this.etchPeak) {
+      ctx.fillStyle = `rgba(20,24,20,${Math.min(0.6, (t - this.etchPeak) * 0.35)})`;
+      ctx.fillRect(BX0, y, BW, BH);
+    }
+    // acid surface line
+    ctx.fillStyle = 'rgba(170,220,150,0.35)';
+    ctx.fillRect(BX0 - 16, BASE_Y + 8, BW + 32, 2);
+    // contrast meter
+    const mx = TRACK_X0, mw = TRACK_X1 - TRACK_X0;
+    this.panel(mx - 10, TRACK_Y - 10, mw + 20, 36);
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.fillRect(mx, TRACK_Y, mw, 12);
+    ctx.fillStyle = t > this.etchPeak ? COLORS.bad : COLORS.good;
+    ctx.fillRect(mx, TRACK_Y, Math.round(mw * c), 12);
+  }
+
   private drawFlat(ctx: CanvasRenderingContext2D, pat: HTMLCanvasElement) {
     ctx.drawImage(pat, BX0, BASE_Y);
     this.heatTint(ctx, BX0, BASE_Y, BW, BH);
@@ -492,6 +605,11 @@ class Fold extends BaseMinigame {
       const counting = this.t - this.beatT0 < this.measure;
       this.text(counting ? 'Listen… one, two…' : 'Strike on the off-beat (&)', this.sx((TRACK_X0 + TRACK_X1) / 2), TRACK_Y - 18, { size: 9, align: 'center', color: counting ? COLORS.dim : COLORS.gold });
     }
+    if (this.phase === 'etch') {
+      this.text('Etch contrast', this.sx((TRACK_X0 + TRACK_X1) / 2), TRACK_Y - 18, { size: 9, align: 'center', color: COLORS.gold });
+      this.text(this.etchPulled >= 0 ? 'Pulled from the bath' : 'Click / tap / Space to pull the blade at peak contrast — before it over-etches', MW / 2, MH - 10, { size: 9, align: 'center', color: COLORS.paper });
+      return;
+    }
     let hint = 'Watch the billet fold…';
     if (this.phase === 'align') hint = 'Drag or Left/Right to line the folded edge up with the gold line — tap / Space to set';
     if (this.phase === 'beat') hint = 'Click / tap / Space on the off-beat marker to weld the fold';
@@ -503,7 +621,12 @@ export const foldGame: MinigameDef = {
   id: 'fold',
   name: 'Pattern Folding',
   controls: 'Align: drag or Left/Right (A/D), then tap / Space / Enter to set. Weld: click / tap / Space on the off-beat.',
-  instructions: (env) => [
+  instructions: (env) => env.params?.mode === 'damascus' ? [
+    'Stack the two metals and fold the billet — each fold doubles its layers.',
+    'Slide the folded half until its edge meets the gold line, then strike on the off-beat (&) to weld it.',
+    'Finally the blade goes into the etching bath. Watch the contrast meter climb and pull the blade (click / Space) right at its peak — wait too long and it over-etches.',
+    'Your dagger\'s pattern number is fixed by the steel; your work decides how clearly it shows. Even perfect work never reaches 100%.',
+  ] : [
     'Fold the two-tone billet again and again — each fold doubles its layers.',
     'Slide the folded half until its edge meets the gold line, then set it.',
     'Then listen to the two-beat count and strike on the off-beat marker (&) to weld it. Neat work keeps the layers crisp.',

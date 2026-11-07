@@ -22,10 +22,13 @@ const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1280, height: 760 }, deviceScaleFactor: 1 });
 const errors = [];
 page.on('pageerror', (e) => errors.push(String(e)));
-page.on('console', (m) => { if (m.type() === 'error' && !/fonts\.g/.test(m.text())) errors.push(m.text()); });
+// Failed requests are checked by URL below (Vercel's analytics script only exists on Vercel itself).
+page.on('console', (m) => { if (m.type() === 'error' && !/fonts\.g|Failed to load resource/.test(m.text())) errors.push(m.text()); });
+page.on('response', (r) => { if (r.status() >= 400 && !/\/_vercel\/|fonts\.g/.test(r.url())) errors.push(`HTTP ${r.status()} ${r.url()}`); });
 const shot = (n) => page.screenshot({ path: `${out}/${n}.png` });
 const sleep = (ms) => page.waitForTimeout(ms);
 const log = (...a) => console.log('[e2e]', ...a);
+const closeModals = async () => { for (let k = 0; k < 6 && (await page.locator('.overlay').count()); k++) { await page.keyboard.press('Escape'); await sleep(250); } };
 
 try {
   await page.goto(url);
@@ -57,14 +60,18 @@ try {
     await sleep(300);
   }
 
-  async function craft(category, tradition, tag) {
-    log('crafting', category, tradition);
+  async function craft(category, tradition, tag, opts = {}) {
+    log('crafting', category, tradition, opts.damascus ? '(Damascus)' : '');
     await page.keyboard.press('KeyF');
     await sleep(500);
     await page.click(`.panel .card:has-text("${category}")`);
     await page.click(`.panel .card:has-text("${tradition}")`);
     await page.click('text=Light the forge');
     await sleep(600);
+    if (opts.damascus) {
+      await page.click('button.opt:has-text("Damascus")');
+      await sleep(200);
+    }
     const t0 = Date.now();
     let shots = 0;
     while (Date.now() - t0 < 900000) {
@@ -109,6 +116,37 @@ try {
   }
 
   await craft('Sword', 'Traditional Foundry', '10-foundry');
+
+  // Damascus dagger: pattern certificate, Damascus index, and the online showcase.
+  await craft('Dagger', 'Traditional Foundry', '16-damascus', { damascus: true });
+  const dm = await page.evaluate(() => { const it = window.__app.state.items.at(-1); return { d: it.surface.damascus, stages: it.history.map((h) => h.stage) }; });
+  log('damascus', JSON.stringify(dm.d));
+  if (!dm.d || !(dm.d.index >= 1 && dm.d.index <= 1000) || !(dm.d.visibility < 0.99) || !dm.stages.includes('damascus')) throw new Error('Damascus dagger is missing its pattern');
+  await page.keyboard.press('KeyC');
+  await sleep(500);
+  await page.click('.tab:has-text("Damascus index")');
+  await sleep(400);
+  if (!(await page.locator('.dm-cell.found').count())) throw new Error('Damascus index does not show the forged pattern');
+  await shot('17-damascus-index');
+  await page.click('.dm-cell.found');
+  await sleep(500);
+  if (!(await page.locator('[data-testid="damascus-card"]').count())) throw new Error('no Damascus certificate on the inspection page');
+  await shot('18-damascus-certificate');
+  await page.click('.panel-foot button:has-text("Show at market")');
+  await sleep(300);
+  await page.click('.panel-foot button:has-text("Show it")');
+  await page.waitForFunction(() => !!window.__app.state.items.at(-1).showcase, null, { timeout: 8000 });
+  await closeModals();
+  await page.keyboard.press('KeyV');
+  await sleep(500);
+  await page.click('.tab:has-text("Showcase")');
+  await page.waitForSelector('[data-testid="showcase-grid"] .showcase-card', { timeout: 8000 });
+  await shot('19-showcase');
+  await page.click('[data-testid="showcase-grid"] .showcase-card');
+  await sleep(500);
+  if (!(await page.locator('[data-testid="damascus-card"]').count())) throw new Error('showcase piece opened without its Damascus certificate');
+  await shot('19b-showcase-piece');
+  await closeModals();
   const crafted = [['Dagger', 'Patternwrights', '11-pattern'], ['Shield', 'Mountain', '12-mountain'], ['Sword', 'Celestial', '13-celestial'], ['Dagger', 'Glassgarden', '14-glass'], ['Sword', 'Experimental', '15-exp']];
   const only = process.env.ONLY ? process.env.ONLY.split(',') : null;
   for (const c of (process.env.QUICK ? [] : crafted)) if (!only || only.some((o) => c[1].includes(o))) await craft(...c);
@@ -121,7 +159,7 @@ try {
   await page.keyboard.press('Escape');
   await page.reload();
   await sleep(800);
-  await page.click('text=Continue');
+  await page.click('button:has-text("Continue")');
   await sleep(1200);
   const after = await page.evaluate(() => window.__app.state.items.map((i) => ({ id: i.id, craft: i.stats.craftsmanship, name: i.name })));
   if (JSON.stringify(before) !== JSON.stringify(after)) throw new Error('items changed after reload');

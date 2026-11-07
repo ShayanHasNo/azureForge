@@ -1,7 +1,8 @@
 // The central item data structure. Every crafting stage writes into this, the
 // renderer draws only from this, and save files store exactly this.
 
-import type { StageId } from '../data/traditions';
+import type { StageId } from '../data/traditions.js';
+import type { DamascusData } from './damascus.js';
 
 export type Category = 'sword' | 'dagger' | 'shield';
 export const ITEM_VERSION = 1;
@@ -82,6 +83,8 @@ export interface SurfaceConfig {
   patternClarity: number;
   /** Fusion swirl (Experimental): 0 = none */
   fusion: number;
+  /** Damascus pattern (daggers forged with the Damascus method). */
+  damascus?: DamascusData;
 }
 
 export interface FinishConfig {
@@ -158,7 +161,7 @@ export interface Item {
   createdDay: number; // in-game day
   createdSeason: string;
   createdAt: number; // real timestamp
-  design: { direction: string; motif: string; palette: string; intents: string[] };
+  design: { direction: string; motif: string; palette: string; intents: string[]; method?: 'standard' | 'damascus' };
   materials: { primary: string; secondary: string; grip: string; fusedWith?: string };
   structure: { approach: string };
   blade?: BladeGeometry;
@@ -180,4 +183,6 @@ export interface Item {
   sold?: boolean;
   giftedTo?: string;
   requestId?: string;
+  /** Posted to the online market showcase. */
+  showcase?: { id: string; token: string; at: number };
 }

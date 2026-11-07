@@ -187,3 +187,22 @@ input[type=text], textarea, select { width: 100%; background: #fff8e8; border: 1
   .showcase { min-height: 320px; }
 }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* ------------------------------------------------ damascus */
+.damascus-card { margin: 8px 0; display: flex; flex-direction: column; gap: 5px; }
+.damascus-card canvas { width: 100%; height: auto; border-radius: 2px; box-shadow: 0 0 0 1px var(--paper-dd); }
+.damascus-card.rare { box-shadow: inset 0 0 0 2px var(--gold), 0 0 12px rgba(240,200,96,.45); }
+.dm-index { font-size: 1.15em; letter-spacing: .5px; }
+.dm-meter { height: 6px; background: rgba(0,0,0,.18); border-radius: 2px; overflow: hidden; }
+.dm-meter i { display: block; height: 100%; background: linear-gradient(90deg, #8a8a96, #e8e8f0); }
+.dm-rare { padding: 4px 8px; border-radius: 3px; color: #1a1210; background: linear-gradient(90deg, var(--rc), var(--rc2)); font-size: .9em; }
+.dm-badge { display: inline-flex; align-items: center; gap: 4px; font-size: .78em; padding: 1px 6px; border-radius: 2px; background: #3a3a44; color: #f0f0f8; }
+.dm-badge.rare { background: linear-gradient(90deg, var(--rc), var(--rc2)); color: #1a1210; font-weight: 600; }
+.dm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 6px; }
+.dm-cell { background: var(--paper-d); border-radius: 3px; padding: 3px; font-size: .78em; text-align: center; box-shadow: inset 0 0 0 1px var(--paper-dd); }
+.dm-cell canvas { width: 100%; height: auto; display: block; }
+.dm-cell.found { box-shadow: inset 0 0 0 2px var(--ember); }
+.dm-cell.named { background: #f3dca0; }
+.showcase-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; }
+.showcase-card { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; }
+.showcase-card .who { font-size: .8em; color: var(--ink-soft); overflow-wrap: anywhere; }
