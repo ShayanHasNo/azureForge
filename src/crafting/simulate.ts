@@ -80,7 +80,10 @@ export function simulateCraft(spec: SimSpec): Item {
     if (stage === 'finish') item.blemishes = generateBlemishes(item);
     if (stage === 'engrave' && item.decoration.engraving.pattern === 'none') continue;
     const fn = APPLY[stage];
-    if (fn) fn(item, syntheticResult(stage, item, spec.skill, r));
+    if (!fn) continue;
+    const res = syntheticResult(stage, item, spec.skill, r);
+    fn(item, res);
+    item.history.push({ stage, name: stage, choices: {}, minigame: { id: stage, score: res.score, grade: '', difficulty: 1, details: {}, summary: 'simulated' }, notes: ['simulated'], at: 0 });
   }
   return refreshDerived(item, true);
 }
