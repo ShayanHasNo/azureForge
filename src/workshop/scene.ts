@@ -44,6 +44,7 @@ interface Particle { x: number; y: number; vx: number; vy: number; life: number;
 interface Light { x: number; y: number; r: number; col: string; a: number; punch: number }
 
 const FONT = '"Pixelify Sans", monospace';
+const FONT_PX = 8;
 const SPEED = 54; // px / s
 const LETTERBOX = '#150d09';
 
@@ -512,6 +513,7 @@ export class WorkshopScene {
     const lane = st.phase === 'night' || st.phase === 'evening';
     L.push({ x: 18, y: 96, r: lane ? 22 : 18, col: lane ? '#ffc870' : '#d8ecff', a: 0.06 + night * 0.12, punch: 0.6 });
     if (bg.glassbloom) L.push({ x: 46, y: 52, r: 24 + Math.sin(this.t * 1.1) * 2, col: '#90f0e0', a: 0.06 + night * 0.16, punch: 0.75 });
+    if (st.decor.shelves === 'cabinet') L.push({ x: 282, y: 34, r: 46, col: '#ffe2b0', a: 0.05 + night * 0.08, punch: 0.6 });
     if (bg.stations.some((s) => s.id === 'gallery')) L.push({ x: 311, y: 100, r: 28, col: '#ffd090', a: 0.06 + night * 0.12, punch: 0.75 });
     return L;
   }
@@ -768,7 +770,7 @@ export class WorkshopScene {
     // gallery glow
     if (bg.stations.some((s) => s.id === 'gallery')) {
       c.globalCompositeOperation = 'lighter';
-      R(c, 305, 80, 13, 46, rgba('#ffc070', 0.05 + night * 0.08));
+      R(c, 305, 84, 12, 42, rgba('#ffc070', 0.04 + night * 0.06));
       c.globalCompositeOperation = 'source-over';
     }
   }
@@ -952,10 +954,39 @@ export class WorkshopScene {
     }
   }
 
+  private textCache = new Map<string, HTMLCanvasElement>();
+  /** Text rendered once with the pixel font, alpha-thresholded so it stays crisp when scaled. */
+  private text(str: string, col: string): HTMLCanvasElement {
+    let ready = false;
+    try { ready = !!(document as any).fonts?.check?.(`${FONT_PX}px "Pixelify Sans"`); } catch { /* ignore */ }
+    const key = str + '|' + col + '|' + ready;
+    let cv = this.textCache.get(key);
+    if (cv) return cv;
+    const [, mc] = makeCanvas(1, 1);
+    mc.font = `${FONT_PX}px ${FONT}`;
+    const w = Math.ceil(mc.measureText(str).width) + 2;
+    const [tc, tx] = makeCanvas(w, FONT_PX + 4);
+    tx.font = `${FONT_PX}px ${FONT}`;
+    tx.textBaseline = 'alphabetic';
+    tx.fillStyle = '#fff';
+    tx.fillText(str, 1, FONT_PX);
+    const img = tx.getImageData(0, 0, tc.width, tc.height);
+    const [r, g, b] = hexToRgb(col);
+    for (let i = 0; i < img.data.length; i += 4) {
+      const a = img.data[i + 3];
+      img.data[i] = r; img.data[i + 1] = g; img.data[i + 2] = b;
+      img.data[i + 3] = a > 105 ? 255 : 0;
+    }
+    tx.putImageData(img, 0, 0);
+    cv = tc;
+    if (this.textCache.size > 60) this.textCache.clear();
+    this.textCache.set(key, cv);
+    return cv;
+  }
+
   private drawLabel(c: C2D, text: string, key: boolean, cx: number, by: number) {
-    c.font = `8px ${FONT}`;
-    c.textBaseline = 'alphabetic';
-    const tw = Math.ceil(c.measureText(text).width);
+    const ts = this.text(text, '#f6e8c8');
+    const tw = ts.width - 2;
     const kw = key ? 10 : 0;
     const w = tw + 8 + kw, h = 12;
     const x = Math.round(clamp(cx - w / 2, 2, W - 2 - w));
@@ -973,11 +1004,13 @@ export class WorkshopScene {
     if (key) {
       R(c, x + 3, y + 2, 8, 8, '#e8c070');
       HL(c, x + 3, x + 10, y + 9, '#a87a30');
-      c.fillStyle = '#2a1a0e';
-      c.fillText('E', x + 4.5, y + 9);
+      c.drawImage(this.text('E', '#2a1a0e'), x + 4, y + 1);
     }
-    c.fillStyle = '#f6e8c8';
-    c.fillText(text, x + 4 + kw, y + 9);
+    // soft drop shadow, then the text
+    c.globalAlpha = 0.5;
+    c.drawImage(this.text(text, '#000000'), x + 4 + kw, y + 2);
+    c.globalAlpha = 1;
+    c.drawImage(ts, x + 3 + kw, y + 1);
   }
 
   // ------------------------------------------------------------ blit

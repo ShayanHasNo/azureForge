@@ -1,0 +1,13 @@
+<!doctype html><html><head><link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600&display=swap" rel="stylesheet" /></head><body style="margin:0;background:#3a2a20"><canvas id="c" width="300" height="75"></canvas>
+<script type="module">
+await document.fonts.load('10px "Pixelify Sans"'); await document.fonts.load('600 10px "Pixelify Sans"');
+const c = document.getElementById('c').getContext('2d');
+let y = 2;
+for (const [sz, th, wt] of [[10,80,400],[10,128,400],[10,105,600],[11,128,400],[11,105,600],[12,128,400]]) {
+  const t = document.createElement('canvas'); t.width = 300; t.height = sz + 4; const x = t.getContext('2d');
+  x.font = `${wt} ${sz}px "Pixelify Sans", monospace`; x.fillStyle = '#fff'; x.fillText(`${sz}/${th}/${wt} Finishing bench your — begin a new piece`, 1, sz);
+  const id = x.getImageData(0,0,300,sz+4); for (let i=0;i<id.data.length;i+=4){id.data[i+3]=id.data[i+3]>th?255:0;} x.putImageData(id,0,0);
+  c.drawImage(t, 2, y); y += sz + 3;
+}
+document.getElementById('c').style.cssText='width:1200px;height:300px;image-rendering:pixelated';
+</script></body></html>

@@ -154,7 +154,7 @@ class Assembly extends BaseMinigame {
     if (this.isShield) this.mode = m === 'inlay' ? 'inlay' : 'rim';
     else this.mode = m === 'inlay' ? 'inlay' : 'hilt';
     if (this.isShield && !env.item.shield) this.mode = 'inlay';
-    this.swayA = this.tune(0.7, 1.8) * (env.quirk === 'drifting' ? 1.7 : 1);
+    this.swayA = this.tune(0.5, 1.5) * (env.quirk === 'drifting' ? 1.7 : 1);
     this.swayR = this.tune(1.2, 3.2) * DEG;
     this.tolPos = this.tune(3, 1.3) * (env.quirk === 'bursts' ? 1.25 : 1);
     this.tolRot = this.tune(7, 3) * DEG;

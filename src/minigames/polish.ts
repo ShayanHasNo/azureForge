@@ -30,6 +30,8 @@ import { gradeOf, type MinigameDef, type MinigameEnv } from './types';
 
 type Mode = 'smooth' | 'brushed' | 'hammered' | 'weathered' | 'reflective' | 'clarity';
 const ZONES = 8;
+/** Deposit at which a pixel counts as fully treated. */
+const FULL = 0.8;
 
 // ------------------------------------------------------------ sprite <-> screen
 interface Xf { cx: number; cy: number; s: number; rot: boolean; W: number; H: number }
@@ -50,7 +52,7 @@ const screenToSprite = (xf: Xf, X: number, Y: number): [number, number] => {
 };
 
 interface Stroke { along: number; path: number; zl: number[] }
-interface Dab { x: number; y: number; z: number }
+interface Dab { x: number; y: number; z: number; zs: number[] }
 
 class Polish extends BaseMinigame {
   private mode: Mode;
@@ -151,9 +153,9 @@ class Polish extends BaseMinigame {
       this.radius = clamp(maxHw * 0.8, 3, 5.5);
     }
     this.jitterAmp = this.tune(0.6, 1.4) * (this.wheel ? 0.5 : 1);
-    this.overT = this.tune(2.1, 1.5);
+    this.overT = this.tune(2.6, 1.9);
     this.vmax = this.tune(230, 140) * (env.quirk === 'bursts' ? 1.15 : 1);
-    if (this.mode === 'reflective') this.overT = this.tune(2.7, 2.1);
+    if (this.mode === 'reflective') this.overT = this.tune(2.8, 2.3);
     if (env.quirk === 'bursts') this.radius *= 1.15;
     // hammered: spacing from area so a full piece takes ~tune(30,50) dabs
     const area = this.zoneN.reduce((a, b) => a + b, 0);
@@ -251,7 +253,7 @@ class Polish extends BaseMinigame {
         if (z < 0 || (onlyZone >= 0 && z !== onlyZone)) continue;
         const d = Math.hypot(x - px, y - py) / r;
         if (d > 1) continue;
-        const f = flat ? 1 - d * d * d * d : 1 - d;
+        const f = flat ? 1 - d * d * d * d : 1 - d * d;
         const k = zoneScale ? zoneScale(z) : 1;
         this.cov[i] = Math.min(3, this.cov[i] + amount * f * k);
       }
@@ -269,7 +271,7 @@ class Polish extends BaseMinigame {
       const z = this.zoneOf[i];
       if (z < 0) continue;
       const c = this.cov[i];
-      const c1 = Math.min(1, c);
+      const c1 = Math.min(1, c / FULL);
       s.c[z] += c1;
       s.m[z] += c;
       sum1[z] += c1; sumSq[z] += c1 * c1;
@@ -464,8 +466,17 @@ class Polish extends BaseMinigame {
     if (z < 0) { this.env.audio.sfx('soft', { volume: 0.5 }); return; }
     let nn = Infinity;
     for (const d of this.dabs) nn = Math.min(nn, Math.hypot(d.x - spx, d.y - spy));
-    this.dabs.push({ x: spx, y: spy, z });
-    this.deposit(spx, spy, this.d0 * 0.62, 1);
+    // zones the dab's disc actually touches (thin shield bands may hold no dab centre)
+    const zs = new Set<number>([z]);
+    const rr = this.d0 * 0.62;
+    for (let yy = Math.floor(spy - rr); yy <= Math.ceil(spy + rr); yy++)
+      for (let xx = Math.floor(spx - rr); xx <= Math.ceil(spx + rr); xx++) {
+        if (Math.hypot(xx - spx, yy - spy) > rr) continue;
+        const zz = this.zoneAtSprite(xx, yy);
+        if (zz >= 0) zs.add(zz);
+      }
+    this.dabs.push({ x: spx, y: spy, z, zs: [...zs] });
+    this.deposit(spx, spy, rr, 1);
     this.env.audio.sfx('pop', { pitch: 0.8 + Math.random() * 0.3 });
     this.sparks(this.cx, this.cy, 4, COLORS.cream);
     if (Number.isFinite(nn)) {
@@ -529,7 +540,7 @@ class Polish extends BaseMinigame {
         for (let z = 0; z < ZONES; z++) {
           const sz = this.zoneTime[z] > 0 ? this.zoneSteady[z] / this.zoneTime[z] : this.zoneN[z] > 0 ? 0 : 1;
           st.push(sz);
-          q[z] = Math.pow(s.c[z], 1.3) * (0.35 + 0.65 * sz) * (1 - clamp(s.o[z]));
+          q[z] = Math.pow(s.c[z], 1.3) * (0.35 + 0.65 * sz) * (1 - clamp(s.o[z] * 0.3));
         }
         const evenness = 1 - clamp((stdev(s.m) / Math.max(0.5, mm)) * 1.5);
         details.evenness = evenness;
@@ -571,7 +582,7 @@ class Polish extends BaseMinigame {
           if (!Number.isFinite(nn)) nn = this.d0 * 3;
           nns.push(nn);
           const sd = nn < this.d0 * 0.35 ? 0 : 1 - clamp(Math.abs(nn - this.d0) / (this.d0 * tol));
-          zs[this.dabs[i].z] += sd; zc[this.dabs[i].z]++;
+          for (const zz of this.dabs[i].zs) { zs[zz] += sd; zc[zz]++; }
         }
         const spacing: number[] = [];
         for (let z = 0; z < ZONES; z++) {
@@ -655,7 +666,7 @@ class Polish extends BaseMinigame {
       const k = i * 4;
       if (z < 0) { d[k + 3] = 0; continue; }
       const c = this.cov[i];
-      const c1 = Math.min(1, c);
+      const c1 = Math.min(1, c / FULL);
       let r = 255, g = 255, b = 255, a = 0;
       switch (this.mode) {
         case 'weathered': {

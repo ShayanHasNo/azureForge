@@ -91,6 +91,8 @@ class Engrave extends BaseMinigame {
   private loupe: boolean;
   private totalSamples = 0;
   private finishedPaths = 0;
+  /** After a stroke ends with the button held, lift before the next stroke can start. */
+  private needLift = false;
 
   constructor(env: MinigameEnv) {
     super(env);
@@ -104,7 +106,7 @@ class Engrave extends BaseMinigame {
     this.tol = this.tune(9, 4) * (env.quirk === 'bursts' ? 1.3 : 1);
     this.slipT = this.tol * this.tune(3.2, 2.5);
     this.kbSpeed = this.tune(42, 60);
-    this.driftAmp = this.tune(6, 16);
+    this.driftAmp = this.tune(14, 28);
     this.phase = seededRng(item.seed, 'engrave-drift').range(0, 6.28);
     this.loupe = env.upgrades.includes('loupe');
     // Preview without the engraving (and without the inscription the renderer would draw instead).
@@ -276,6 +278,7 @@ class Engrave extends BaseMinigame {
     this.floatText(a > 0.9 ? 'Crisp!' : a > 0.7 ? 'Clean' : 'Done', end[0] + this.off[0], end[1] + this.off[1] - 14, a > 0.9 ? COLORS.gold : a > 0.7 ? COLORS.good : COLORS.cream);
     this.cur++;
     this.state = 'await';
+    this.needLift = this.pointer.down;
     this.kb = false;
     this.kbOff = [0, 0];
     this.env.onStatus?.(this.statusText());
@@ -324,7 +327,7 @@ class Engrave extends BaseMinigame {
       if (this.env.quirk === 'bursts') v *= 0.7 + 0.6 * (0.5 + 0.5 * Math.sin(this.t * 2));
       const s2 = Math.min(g.total, this.s + v * dt);
       const at = this.pointAt(g, s2);
-      const pull = this.driftAmp * (Math.sin(s2 * 0.045 + this.phase) * 0.7 + Math.sin(s2 * 0.11 + this.phase * 2) * 0.3);
+      const pull = this.driftAmp * (Math.sin(s2 * 0.03 + this.phase) * 0.65 + Math.sin(s2 * 0.083 + this.phase * 2) * 0.35);
       const ax = this.axisX(), ay = this.axisY();
       const steer = 42;
       this.kbOff = [this.kbOff[0] + (ax * steer + at.n[0] * pull) * dt, this.kbOff[1] + (ay * steer + at.n[1] * pull) * dt];
@@ -345,10 +348,11 @@ class Engrave extends BaseMinigame {
     // ---- pointer
     if (this.pointer.down || this.pointer.justUp || this.pointer.justDown) this.kb = false;
     this.graver = q;
+    if (!this.pointer.down) this.needLift = false;
     const startR = Math.max(this.tol * 2.2, 10);
     const resumeR = Math.max(this.tol * 1.6, 9);
     if (this.state === 'await') {
-      if (this.pointer.down && len(sub(q, g.pts[0])) <= startR) {
+      if (this.pointer.down && !this.needLift && len(sub(q, g.pts[0])) <= startR) {
         this.state = 'cutting';
         this.s = 0;
         this.next = 0;
@@ -357,7 +361,7 @@ class Engrave extends BaseMinigame {
         this.prevQ = q;
         this.beginCut(q);
         this.env.audio.sfx('engrave', { pitch: 1.1 });
-      } else if (this.pointer.justDown && !onFinish && this.hintCool <= 0) {
+      } else if (this.pointer.justDown && !onFinish && this.hintCool <= 0 && !this.needLift) {
         this.hintCool = 1;
         this.floatText('Start on the glowing dot', this.pointer.x, this.pointer.y - 14, COLORS.paper);
       }

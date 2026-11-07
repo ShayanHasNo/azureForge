@@ -100,7 +100,7 @@ export abstract class BaseMinigame implements MinigameInstance {
       this.resolveFn = res;
       this.last = performance.now();
       const frame = (ts: number) => {
-        const dt = Math.min(0.05, (ts - this.last) / 1000);
+        const dt = Math.max(0, Math.min(0.05, (ts - this.last) / 1000));
         this.last = ts;
         this.t += dt;
         if (!this.finished) this.update(dt);

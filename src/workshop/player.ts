@@ -18,13 +18,41 @@ const PAL: Record<string, string> = {
 };
 
 export const SPRITE_W = 12;
-export const SPRITE_H = 20;
+export const SPRITE_H = 19;
 
 type Grid = (string | null)[][];
 
 function blank(): Grid {
   return Array.from({ length: SPRITE_H }, () => Array<string | null>(SPRITE_W).fill(null));
 }
+
+// Hand-placed pixel rows (facing right). '.' = empty.
+const HEAD = [
+  '..hhhh..',
+  '.hHHHhh.',
+  'hhHhhhhh',
+  'Cccccccc',
+  'hhssssss',
+  'hhsssess',
+  'hhSssrss',
+  '.hSSsss.',
+];
+const TORSO = [
+  '.wwaaww.',
+  'xwaaaawx',
+  'SaaaaaAs',
+  'SAAkAAAs',
+  'SaaaaaaS',
+  '.aaaaaa.',
+];
+// legs rows 14..16 for: idle, walk0 (front leg forward), walk1 (passing), walk2 (back leg forward), walk3 (passing)
+const LEGS: Record<string, string[]> = {
+  idle: ['..PPpp..', '..PPpp..', '..bbbbb.'],
+  w0: ['..PPpp..', '.PP..pp.', 'bb....bbb'],
+  w1: ['..PPpp..', '..PPpb..', '..bb.bb.'],
+  w2: ['..PPpp..', '.pp..PP.', 'bbb...bb'],
+  w3: ['..PPpp..', '..bPpp..', '.bb.bbb.'],
+};
 
 /** Compose one frame, facing right. walk: -1 idle, 0..3 walk. */
 function compose(walk: number, breath: number, blink: boolean): Grid {
@@ -33,65 +61,22 @@ function compose(walk: number, breath: number, blink: boolean): Grid {
     const X = x + 1, Y = y + 1;
     if (X >= 0 && Y >= 0 && X < SPRITE_W && Y < SPRITE_H) g[Y][X] = k;
   };
-  const rect = (x: number, y: number, w: number, h: number, k: string) => { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) put(x + i, y + j, k); };
-
-  const passing = walk === 1 || walk === 3;
-  const bob = walk >= 0 ? (passing ? -1 : 0) : breath; // body offset (y)
-  // ---- legs (inner rows 13..15)
-  const hip = 13 + bob;
-  const legs = (lx: number, foot: number, back: boolean) => {
-    for (let y = hip; y <= 14; y++) rect(lx, y, 2, 1, back ? 'P' : 'p');
-    rect(lx + foot, 15, 2, 1, 'b');
-    put(lx + foot + 2, 15, back ? 'b' : 'B');
+  const rows = (art: string[], x0: number, y0: number, map?: (k: string, x: number, y: number) => string) => {
+    art.forEach((row, j) => { for (let i = 0; i < row.length; i++) { let k = row[i]; if (k === '.') continue; if (map) k = map(k, i, j); put(x0 + i, y0 + j, k); } });
   };
-  if (walk < 0 || passing) {
-    legs(2, 0, true);
-    legs(4, 0, false);
-  } else {
-    const s = walk === 0 ? 1 : -1;
-    legs(3 - s, -s, true);
-    legs(3 + s, s > 0 ? 0 : 0, false);
+  const passing = walk === 1 || walk === 3;
+  const o = passing ? -1 : 0;
+  const legs = walk < 0 ? LEGS.idle : LEGS['w' + walk];
+  rows(legs, 0, 14);
+  if (passing) rows(['..PPpp..'], 0, 13);
+  const swing = walk === 0 ? 1 : walk === 2 ? -1 : 0;
+  rows(TORSO, 0, 8 + o, (k, x, y) => k);
+  if (swing) {
+    // front forearm swings opposite the front leg
+    for (let y = 10; y <= 12; y++) put(7, y + o, y === 12 ? 'a' : y === 11 ? 'A' : 'a');
+    for (let y = 10; y <= 12; y++) put(7 - swing, y + o, 's');
   }
-  // ---- torso (rows 8..12) shirt with apron
-  const ty = 8 + bob;
-  rect(1, ty, 6, 5, 'w');
-  rect(1, ty + 3, 1, 2, 'W');
-  rect(2, ty + 1, 5, 5, 'a');
-  rect(3, ty, 3, 1, 'a');
-  rect(2, ty + 5, 5, 1, 'A');
-  put(6, ty + 1, 'A'); put(6, ty + 2, 'A');
-  rect(2, ty + 3, 5, 1, 'A');
-  put(4, ty + 3, 'k');
-  put(2, ty, 'k'); put(6, ty, 'k');
-  // ---- arms: rolled sleeves (shirt upper, skin forearm)
-  const swing = walk < 0 ? 0 : walk === 0 ? 1 : walk === 2 ? -1 : 0;
-  // back arm
-  put(0, ty, 'W'); put(0, ty + 1, 'x');
-  put(0 - (swing > 0 ? 1 : 0), ty + 2, 'S'); put(0 - (swing > 0 ? 1 : 0), ty + 3, 'S');
-  put(0 - (swing > 0 ? 1 : 0), ty + 4, 'S');
-  // front arm
-  put(7, ty, 'w'); put(7, ty + 1, 'x');
-  put(7 + (swing < 0 ? 0 : swing), ty + 2, 's'); put(7 + (swing < 0 ? 0 : swing), ty + 3, 's');
-  put(7 + (swing > 0 ? 1 : swing < 0 ? -1 : 0), ty + 4, 's');
-  // ---- head (rows 0..7)
-  const hy = 0 + bob;
-  rect(1, hy + 1, 6, 6, 's');
-  rect(2, hy, 5, 1, 'h');
-  rect(1, hy + 1, 6, 2, 'h');
-  put(3, hy, 'H'); put(4, hy, 'H'); put(3, hy + 1, 'H');
-  rect(0, hy + 2, 2, 4, 'h'); put(0, hy + 6, 'd'); put(1, hy + 6, 'h');
-  put(2, hy + 3, 'h'); put(6, hy + 3, 'h');
-  // kerchief band
-  rect(1, hy + 2, 6, 1, 'c'); put(0, hy + 2, 'C'); put(-1, hy + 3, 'C'); put(-1, hy + 4, 'c');
-  // face
-  put(5, hy + 4, blink ? 'S' : 'e');
-  put(7, hy + 4, 's'); // nose
-  put(4, hy + 5, 'r');
-  put(6, hy + 6, 'S'); put(5, hy + 6, 's');
-  rect(2, hy + 6, 2, 1, 'S');
-  put(1, hy + 5, 'S');
-  // neck
-  put(3, hy + 7, 'S'); put(4, hy + 7, 'S');
+  rows(HEAD, 0, 0 + o + breath, (k) => (blink && k === 'e' ? 'S' : k));
   return g;
 }
 

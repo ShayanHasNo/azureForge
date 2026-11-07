@@ -167,7 +167,7 @@ class Constellation extends BaseMinigame {
     const later = this.cur + 2 < this.n ? this.starPos(this.cur + 2) : null;
     if (d <= capture || this.missesHere >= 6) {
       const precision = d <= capture ? clamp(1 - Math.max(0, d / this.tol - 0.2) / 1.8) : 0.2;
-      const smooth = this.smoothness(from, at, path);
+      const smooth = this.kb ? this.kbSmoothness(from, at, path) : this.smoothness(from, at, path);
       if (!this.points.length) this.points.push(skyToTU(from[0], from[1]));
       this.points.push(skyToTU(target[0], target[1]));
       this.links.push({ from, to: target, precision, smooth });
@@ -209,6 +209,15 @@ class Constellation extends BaseMinigame {
     for (let i = 2; i < path.length; i++) wob += Math.hypot(path[i][0] - 2 * path[i - 1][0] + path[i - 2][0], path[i][1] - 2 * path[i - 1][1] + path[i - 2][1]);
     const wobble = wob / Math.max(1, path.length - 2) / 6;
     return clamp(1 - wander * 0.7 - wobble * 0.3 * this.tune(0.7, 1.2));
+  }
+
+  /** Keyboard: arrows only move in 8 directions, so judge economy of motion instead of shape. */
+  private kbSmoothness(a: V, b: V, path: V[]): number {
+    const direct = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    if (direct < 4 || path.length < 2) return 0.85;
+    let L = 0;
+    for (let i = 1; i < path.length; i++) L += Math.hypot(path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1]);
+    return clamp(1 - Math.max(0, L / direct - 1) * 0.6);
   }
 
   private complete() {

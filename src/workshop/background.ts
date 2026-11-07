@@ -363,16 +363,21 @@ function drawCeiling(c: C2D) {
   R(c, 0, CEIL, W, 1, 'rgba(10,5,2,0.35)');
   R(c, 0, CEIL + 1, W, 2, 'rgba(10,5,2,0.15)');
   // drying herbs hanging from the purlin
-  const herbs: [number, string][] = [[150, '#6a8a44'], [258, '#8a7a3a'], [296, '#7a9a54'], [10, '#8a6a9a']];
+  const herbs: [number, string[]][] = [[150, ['#4e6a34', '#6a8a44', '#8aa858']], [258, ['#6a5a2a', '#8a7a3a', '#b0a050']], [296, ['#4a6a3a', '#6a8a50', '#8ab070']], [12, ['#5a4a6a', '#7a6a9a', '#a890c0']]];
   for (const [hx, col] of herbs) {
-    V(c, hx, CEIL, CEIL + 3, '#a8946a');
-    for (let i = 0; i < 7; i++) {
+    V(c, hx, CEIL, CEIL + 2, '#a8946a');
+    P(c, hx - 1, CEIL + 3, '#c8a050'); P(c, hx, CEIL + 3, '#e0b860'); P(c, hx + 1, CEIL + 3, '#c8a050');
+    for (let i = 0; i < 10; i++) {
       const yy = CEIL + 4 + i;
-      const wv = Math.min(i, 3);
-      R(c, hx - wv, yy, wv * 2 + 1, 1, i % 2 ? col : shadeHex(col, -0.2));
-      if (i > 2) P(c, hx - wv + (i % 3), yy, shadeHex(col, 0.25));
+      const wv = Math.min(3, Math.floor(i / 2) + 1);
+      for (let x = hx - wv; x <= hx + wv; x++) {
+        const n = noise2(hx, x, yy);
+        if (Math.abs(x - hx) === wv && n < 0.45) continue;
+        if (i > 7 && n < 0.5) continue;
+        P(c, x, yy, col[n < 0.35 ? 0 : n < 0.75 ? 1 : 2]);
+      }
+      if (i < 4) P(c, hx, yy, '#6a5a30');
     }
-    P(c, hx, CEIL + 4, '#c8a050');
   }
 }
 
@@ -520,7 +525,7 @@ function drawForge(c: C2D, style: string, up: Set<string>, mouth: Mouth) {
 
   // chimney + hood
   if (style === 'stone') {
-    maskedStones(c, 78, 0, 104, 92, (x, y) => chimIn(x, y) || hoodIn(x, y), STONE_PAL, '#4c443a', 21);
+    maskedStones(c, 60, 0, 122, 92, (x, y) => chimIn(x, y) || hoodIn(x, y), STONE_PAL, '#4c443a', 21);
   } else if (style === 'dragonmaw') {
     maskedStones(c, 78, 0, 104, hoodTop - 1, chimIn, BASALT_PAL, '#24202a', 22);
     // scaled hood
@@ -563,11 +568,25 @@ function drawForge(c: C2D, style: string, up: Set<string>, mouth: Mouth) {
     }
     R(c, 63, 89, 57, 3, COPPER[2]); HL(c, 63, 119, 89, COPPER[5]); HL(c, 63, 119, 91, COPPER[0]);
   } else {
-    maskedBricks(c, 76, 0, 106, 92, (x, y) => chimIn(x, y) || hoodIn(x, y), BRICK_PAL, '#5a4a3e', 6, 3, 17);
+    maskedBricks(c, 60, 0, 122, 92, (x, y) => chimIn(x, y) || hoodIn(x, y), BRICK_PAL, '#5a4a3e', 6, 3, 17);
   }
   // shade the chimney edges
   if (style !== 'copperhood')
     for (let y = 0; y < hoodTop; y++) { P(c, 80, y, 'rgba(0,0,0,0.25)'); P(c, 102, y, 'rgba(0,0,0,0.35)'); P(c, 101, y, 'rgba(0,0,0,0.15)'); }
+  if (style === 'brick' || style === 'stone') {
+    // define the hood: shaded slanted edges, a cornice where it meets the flue and a lintel band
+    for (let y = hoodTop; y <= 92; y++) {
+      const t = (y - hoodTop) / (92 - hoodTop);
+      const hw = 11 + t * 12;
+      const xl = Math.ceil(cx - 0.5 - hw), xr = Math.floor(cx - 0.5 + hw);
+      P(c, xl, y, 'rgba(10,5,2,0.45)'); P(c, xl + 1, y, 'rgba(255,220,180,0.12)');
+      P(c, xr, y, 'rgba(10,5,2,0.55)'); P(c, xr - 1, y, 'rgba(10,5,2,0.2)');
+    }
+    const band = style === 'stone' ? '#9a8e74' : '#8a7e6e';
+    bevel(c, 78, hoodTop - 2, 27, 3, band, 0.2, 0.3);
+    bevel(c, 68, 88, 47, 4, band, 0.2, 0.3);
+    for (let x = 70; x < 113; x += 7) P(c, x, 90, shadeHex(band, -0.2));
+  }
   // soot above the hood mouth
   for (let y = 80; y <= 92; y++) for (let x = 76; x <= 106; x++) if (hoodIn(x, y) && noise2(8, x, y) < (y - 80) / 16) P(c, x, y, 'rgba(20,10,6,0.25)');
 
@@ -819,16 +838,17 @@ function drawFinishing(c: C2D, up: Set<string>): { x: number; y: number; r: numb
   HL(c, x0 + 13, x0 + 26, top - 1, IRON[5]); HL(c, x0 + 14, x0 + 25, top - 2, IRON[6]);
   R(c, x0 + 27, top - 3, 1, 4, BRASS[3]); R(c, x0 + 28, top - 2, 4, 2, WOOD[3]);
   if (up.has('wheel')) {
-    const wx = 180, wy = 99, r = 8;
+    const wx = 180, wy = 101, r = 6;
     // stand
     R(c, wx - 1, wy, 3, top - wy, WOOD[3]); V(c, wx - 1, wy, top - 1, WOOD[4]);
     R(c, wx - 5, top - 2, 11, 2, WOOD[2]);
     // treadle belt down to the floor
     V(c, wx + r - 1, wy + 2, BASE - 1, '#3a2418');
     R(c, wx + 2, BASE - 2, 9, 2, WOOD[3]);
-    disc(c, wx, wy, r, '#b8a888');
-    disc(c, wx, wy, r - 1, '#e4dac0');
-    disc(c, wx, wy, r - 3, '#cfc2a2');
+    disc(c, wx, wy, r, '#7a6a4a');
+    disc(c, wx, wy, r - 1, '#d4c6a4');
+    disc(c, wx, wy, r - 2, '#c0b090');
+    P(c, wx - 3, wy - 4, '#f0e6cc'); P(c, wx - 4, wy - 3, '#f0e6cc');
     return { x: wx, y: wy, r };
   }
   // buffing rouge + oil flask instead
@@ -1044,32 +1064,37 @@ function drawDisplay(c: C2D, shelves: string, items: Item[]) {
 
 // ============================================================ gallery doorway
 function drawGallery(c: C2D) {
-  const x0 = 303, x1 = 318, y0 = 70;
-  // stone jambs
-  for (let y = y0 - 4; y < FLOOR_Y; y++) {
-    P(c, x0, y, '#6e665a'); P(c, x0 + 1, y, '#8e8676'); P(c, x1, y, '#6e665a'); P(c, x1 + 1, y, '#5a5248');
-  }
-  for (let x = x0; x <= x1 + 1; x++) for (let y = y0 - 5; y < y0; y++) {
-    const d = Math.abs(x - (x0 + x1) / 2);
-    if (y - (y0 - 5) >= Math.floor(d / 3)) P(c, x, y, y === y0 - 1 ? '#5a5248' : '#8e8676');
-  }
-  // the lit room beyond
-  for (let y = y0; y < BASE + 4; y++)
-    for (let x = x0 + 2; x < x1; x++) {
-      const t = (y - y0) / (BASE - y0);
-      let col = y < FLOOR_Y - 8 ? mixHex('#7a5a3a', '#a07850', t) : mixHex('#5a3e28', '#7a5a3a', (y - FLOOR_Y + 8) / 12);
-      if (x === x0 + 2) col = shadeHex(col, -0.35);
+  const x0 = 304, x1 = 317, top = 72;
+  const cxm = (x0 + x1) / 2;
+  const open = (x: number, y: number) => x >= x0 && x <= x1 && y <= BASE && (y >= top + 6 || (x - cxm) ** 2 + ((y - (top + 6)) * 1.1) ** 2 <= 6.9 * 6.9);
+  // casing
+  for (let y = top - 3; y <= BASE; y++)
+    for (let x = x0 - 3; x <= x1 + 3; x++) {
+      if (open(x, y)) continue;
+      const near = open(x - 1, y) || open(x + 1, y) || open(x, y + 1) || open(x - 2, y) || open(x + 2, y) || open(x, y + 2) || open(x - 3, y) || open(x + 3, y) || open(x, y + 3);
+      if (near) P(c, x, y, open(x + 1, y) || open(x, y + 1) ? '#3a2416' : x < x0 ? '#6e4a2c' : '#4e3020');
+    }
+  // the room beyond: far wall, framed piece, floor, plinth with a shield
+  for (let y = top; y <= BASE; y++)
+    for (let x = x0; x <= x1; x++) {
+      if (!open(x, y)) continue;
+      let col: string;
+      if (y < 110) col = mixHex('#3e2a1e', '#7a5a3c', clamp((y - top) / 40) * 0.6 + clamp((x1 - x) / 14) * 0.25);
+      else col = (x + y) % 5 === 0 ? '#5a3e28' : mixHex('#6a4a30', '#8a6440', (y - 110) / 16);
+      if (x === x0) col = shadeHex(col, -0.4);
       P(c, x, y, col);
     }
-  // plinths with glinting pieces
-  for (const [px, ph] of [[307, 10], [313, 8]] as [number, number][]) {
-    R(c, px, FLOOR_Y - ph, 4, ph, '#d8ccb0'); HL(c, px, px + 3, FLOOR_Y - ph, '#f0e6cc'); V(c, px + 3, FLOOR_Y - ph, FLOOR_Y - 1, '#a89a7e');
-    V(c, px + 1, FLOOR_Y - ph - 7, FLOOR_Y - ph - 1, IRON[5]); P(c, px + 1, FLOOR_Y - ph - 8, IRON[6]); HL(c, px, px + 2, FLOOR_Y - ph - 2, BRASS[4]);
-  }
-  // little framed plaque
-  R(c, x0 + 4, y0 + 6, 9, 7, BRASS[2]); R(c, x0 + 5, y0 + 7, 7, 5, '#3a2a44'); P(c, x0 + 8, y0 + 9, '#f0e0a0');
-  // threshold
-  R(c, x0, BASE - 2, x1 - x0 + 2, 2, '#8e8676');
+  // framed sword on the far wall
+  R(c, x0 + 4, top + 12, 7, 17, BRASS[2]); R(c, x0 + 5, top + 13, 5, 15, '#2a1a22');
+  V(c, x0 + 7, top + 14, top + 23, IRON[5]); P(c, x0 + 7, top + 14, IRON[6]); HL(c, x0 + 6, x0 + 8, top + 24, BRASS[4]); V(c, x0 + 7, top + 25, top + 26, WOOD[4]);
+  // plinth
+  R(c, x0 + 6, 112, 7, 11, '#d8ccb0'); HL(c, x0 + 6, x0 + 12, 112, '#f0e6cc'); V(c, x0 + 12, 112, 122, '#a89a7e'); R(c, x0 + 5, 111, 9, 1, '#c8bca0');
+  disc(c, x0 + 9, 107, 3, '#8a5a34'); P(c, x0 + 9, 107, BRASS[5]); P(c, x0 + 8, 105, '#b07a48');
+  // shadow side of the opening
+  for (let y = top; y <= BASE; y++) if (open(x0 + 1, y)) P(c, x0 + 1, y, 'rgba(0,0,0,0.25)');
+  // sign above
+  R(c, x0 + 1, top - 10, 12, 5, WOOD[4]); HL(c, x0 + 1, x0 + 12, top - 10, WOOD[6]);
+  P(c, x0 + 7, top - 8, BRASS[5]); P(c, x0 + 6, top - 8, BRASS[3]); P(c, x0 + 8, top - 8, BRASS[3]); P(c, x0 + 7, top - 9, BRASS[4]); P(c, x0 + 7, top - 7, BRASS[4]);
 }
 
 // ============================================================ door
