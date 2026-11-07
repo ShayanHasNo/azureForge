@@ -5,6 +5,7 @@ import { hexToRgb } from '../core/util';
 import { hasMat, mat } from '../data/materials';
 import { palette } from '../data/options';
 import type { Item } from '../item/types';
+import { rareColor } from '../item/damascus';
 import { renderItem, View } from '../render/itemRenderer';
 import { toCanvas } from '../render/pixel';
 
@@ -50,6 +51,9 @@ export class Showcase {
   private glowColor(): string {
     const f = this.item.finish;
     if (f.finish === 'glow') return f.glowColor ?? palette(this.item.design.palette).glow;
+    // a prized Damascus colour shimmers gently (presentation only)
+    const rc = rareColor(this.item.surface.damascus?.color);
+    if (rc) return rc.hex;
     if (f.finish === 'smoulder') return '#ff7a30';
     if (f.finish === 'moonlit') return '#c8d8ff';
     if (this.item.decoration.constellation) return '#c8b8ff';

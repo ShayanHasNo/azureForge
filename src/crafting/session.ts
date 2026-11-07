@@ -12,6 +12,7 @@ import type { Category, Item, StageRecord } from '../item/types';
 import { gradeOf, QUIRKS, type MinigameResult } from '../minigames/types';
 import { APPLY, generateBlemishes, STAGE_MINIGAME } from './apply';
 import { materialNeeds, STAGES, StageCtx, stonesNeeded } from './stages';
+import { methodOf, stagesForMethod } from './method';
 
 export class CraftSession {
   item: Item;
@@ -102,6 +103,12 @@ export class CraftSession {
   commitDecisions(): string | null {
     const err = this.validate();
     if (err) return err;
+    if (this.stage === 'design') {
+      const method = methodOf(this.item);
+      this.stages = stagesForMethod(this.stages, method, this.trad.stages);
+      if (method !== 'damascus') delete this.item.surface.damascus;
+      if (method === 'damascus' && this.item.surface.texture === 'layered') this.item.surface.texture = 'smooth';
+    }
     if (this.stage === 'materials' && !this.materialsPaid) {
       for (const [id, n] of Object.entries(materialNeeds(this.item))) addMaterial(this.state, id, -n);
       this.materialsPaid = true;

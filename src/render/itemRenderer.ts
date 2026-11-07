@@ -11,6 +11,7 @@ import { hasMat, mat } from '../data/materials';
 import { palette as designPalette } from '../data/options';
 import { CATEGORY_INFO } from '../item/factory';
 import { EMBLEM_BITMAPS, engravingPaths, glyphFor } from '../item/patterns';
+import { damascusField, patternSpec, rareColor } from '../item/damascus';
 import type { Item } from '../item/types';
 import { PixelImage } from './pixel';
 
@@ -217,6 +218,7 @@ function renderBladed(item: Item, view: View): PixelImage {
   drawBlade(ctx, lay);
   drawSurfaceTexture(ctx);
   drawFusion(ctx);
+  drawDamascus(ctx);
   drawGuard(ctx, lay);
   drawGrip(ctx, lay);
   drawPommel(ctx, lay);
@@ -407,6 +409,34 @@ function drawSurfaceTexture(ctx: Ctx) {
 
 function isWood(id?: string) {
   return !!id && hasMat(id) && ['wood', 'leather', 'bone'].includes(mat(id).kind);
+}
+
+/**
+ * Damascus pattern (daggers). The pattern comes only from the pattern index;
+ * visibility scales how strongly the bright and dark layers show, and a rare
+ * colour replaces the bright layers' tone.
+ */
+function drawDamascus(ctx: Ctx) {
+  const { item, c } = ctx;
+  const d = item.surface.damascus;
+  if (!d || item.category === 'shield') return;
+  const spec = patternSpec(d.index);
+  const v = clamp(d.visibility, 0, 1);
+  const pP = c.palettes[ctx.P], pS = c.palettes[ctx.S];
+  const rc = rareColor(d.color);
+  const bright = rc ? hexToRgb(rc.hex) : mixRgb(pS[4], pS[5], 0.35);
+  const bright2 = rc?.hex2 ? hexToRgb(rc.hex2) : bright;
+  const dark = mixRgb(pP[0], pP[1], 0.5);
+  for (let i = 0; i < c.layer.length; i++) {
+    if (c.layer[i] !== L_BLADE || c.bt[i] < 0) continue;
+    const t = c.bt[i], u = c.bu[i];
+    const f = damascusField(spec, t, u);
+    const edge = Math.abs(u) > 0.92 ? 0.55 : 1;
+    const col = rc?.hex2 ? mixRgb(bright, bright2, clamp(t * 1.2 - 0.1)) : bright;
+    if (f > 0.5) c.addTint(i, col, v * (f - 0.5) * 2 * (rc ? 0.95 : 0.8) * edge);
+    else c.addTint(i, dark, v * (0.5 - f) * 2 * 0.5 * edge);
+    c.shade[i] = clamp(c.shade[i] + v * (f - 0.5) * 1.1 * edge, 0, 5);
+  }
 }
 
 function drawFusion(ctx: Ctx) {

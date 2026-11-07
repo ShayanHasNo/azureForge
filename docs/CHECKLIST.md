@@ -88,3 +88,14 @@ Status key: **Not started**, **In progress**, **Implemented** (code is in and wo
 | Synthesized SFX, ambience and generative music, with 3 volume controls plus master | Implemented |
 | Accessibility: Relaxed mode, reduced motion, high contrast, UI scale, keyboard and touch | Implemented |
 | Save reliability: autosave, backup, export and import, migration | Tested |
+
+## Phase 11 – Damascus daggers & market showcase
+| Feature | Status |
+|---|---|
+| Damascus forging method for daggers (fold + etch minigame) | Tested (browser playthrough) |
+| 1000 numbered patterns decided by the index alone, 8 named patterns | Tested (`tests/damascus.test.ts`) |
+| Pattern visibility from forge quality + seeded roll, never 100% | Tested |
+| 7 rare colours from specific metal pairs | Tested |
+| Damascus certificate on the appraisal page; Collection → Damascus index | Tested (browser playthrough) |
+| Online market showcase: post, browse newest/rarest, withdraw | Tested (`tests/showcase.test.ts`, browser playthrough) |
+| Server-side validation, forged-pattern rejection, rate limit, retention | Tested |

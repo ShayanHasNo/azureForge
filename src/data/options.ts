@@ -156,6 +156,12 @@ export const APPROACHES: ApproachDef[] = [
   { ...o('experimental', 'Experimental', 'Unusual internal structure. Results vary wildly — sometimes wonderfully.', ['experimental', 'strange']), mods: { durability: 0, weight: 0, flexibility: 0, balance: 0, ornament: 0.05, integrity: 0, variance: 0.18 } },
 ];
 
+// -------------------------------------------------------------- forging method (daggers)
+export const METHODS: OptionDef[] = [
+  o('standard', 'Standard forging', 'A single, honest billet.'),
+  o('damascus', 'Damascus', 'Stack, fold and etch two metals into one of 1000 collectible patterns. How clearly the pattern shows depends on your forging — and a little luck.', ['pattern', 'ornate'], { categories: ['dagger'] }, 0.15),
+];
+
 export const FULLERS: OptionDef[] = [
   o('none', 'None', 'A plain flat section.'),
   o('single', 'Single fuller', 'One central groove.', ['traditional']),
@@ -258,7 +264,7 @@ export const BOSSES: OptionDef[] = [
 export const ALL_OPTION_LISTS: Record<string, OptionDef[]> = {
   direction: DIRECTIONS, motif: MOTIFS, intent: INTENTS, profile: PROFILES, tip: TIPS, guard: GUARDS, pommel: POMMELS,
   wrap: WRAPS, texture: TEXTURES, engraving: ENGRAVINGS, emblem: EMBLEMS, finish: FINISHES, fuller: FULLERS,
-  approach: APPROACHES, shieldShape: SHIELD_SHAPES, boss: BOSSES,
+  approach: APPROACHES, method: METHODS, shieldShape: SHIELD_SHAPES, boss: BOSSES,
 };
 
 export function findOption(list: string, id: string): OptionDef | undefined {

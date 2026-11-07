@@ -1,11 +1,12 @@
 // Dynamic naming and description, composed from the item's actual properties.
 
-import { seededRng } from '../core/rng';
-import { hasMat, mat } from '../data/materials';
-import { optionName, palette, WRAP_COLORS } from '../data/options';
-import { tradition } from '../data/traditions';
-import { collectDesignTags, computeStats, decorPresence } from './stats';
-import type { Item } from './types';
+import { seededRng } from '../core/rng.js';
+import { hasMat, mat } from '../data/materials.js';
+import { optionName, palette, WRAP_COLORS } from '../data/options.js';
+import { tradition } from '../data/traditions.js';
+import { collectDesignTags, computeStats, decorPresence } from './stats.js';
+import type { Item } from './types.js';
+import { FAMILY_INFO, patternSpec, rareColor } from './damascus.js';
 
 const MOTIF_WORDS: Record<string, string[]> = {
   vine: ['Vine', 'Ivy', 'Bramble', 'Tendril'], mountain: ['Ridge', 'Peak', 'Cairn', 'Crag'], wave: ['Tide', 'River', 'Current', 'Brook'],
@@ -113,11 +114,18 @@ export function generateDescription(item: Item): string {
   if (item.decoration.inscription.trim()) parts.push(`An inscription runs along the back: “${item.decoration.inscription.trim()}”.`);
   if (item.decoration.constellation) parts.push('A constellation of infused starlight glimmers beneath the surface.');
   if (item.decoration.stones.length) parts.push(`${item.decoration.stones.length} mountain stones are set by hand into the metal.`);
+  const dm = item.surface.damascus;
+  if (dm) {
+    const rc = rareColor(dm.color);
+    const v = dm.visibility;
+    parts.push(`Its Damascus steel carries pattern #${dm.index}, a ${FAMILY_INFO[patternSpec(dm.index).family].name.toLowerCase()} pattern ${v >= 0.85 ? 'standing out crisp and bright' : v >= 0.6 ? 'clearly visible in the steel' : v >= 0.35 ? 'showing softly through the surface' : 'only a ghost beneath the polish'}${rc ? `, its layers blooming a rare ${rc.name.toLowerCase()}` : ''}.`);
+  }
 
   // Distinguishing features
   const dist: string[] = [];
   if (item.blade && item.blade.asymmetry > 0.3) dist.push('asymmetrical form');
   if (decorPresence(item) > 0.5) dist.push('dense ornamentation');
+  if (rareColor(item.surface.damascus?.color)) dist.push(`rare ${rareColor(item.surface.damascus?.color)!.name} Damascus`);
   if (item.mutations.length) dist.push(`unexpected ${item.mutations.map((m) => MUTATION_WORDS[m] ?? m).join(' and ')}`);
   if (['weathered', 'forgescale', 'iridescent', 'nebula', 'layered'].includes(item.surface.texture)) dist.push(`${optionName('texture', item.surface.texture).toLowerCase()} surface`);
   if (['glow', 'aged', 'smoulder', 'prism', 'moonlit', 'verdigris'].includes(item.finish.finish)) dist.push(`${optionName('finish', item.finish.finish).toLowerCase()} finish`);

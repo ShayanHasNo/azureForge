@@ -6,6 +6,7 @@ import { clamp } from '../core/util';
 import { SEGMENTS } from '../item/factory';
 import type { Blemish, Item } from '../item/types';
 import type { MinigameResult } from '../minigames/types';
+import { describeDamascus, rareColor, rollDamascus } from '../item/damascus';
 
 const arr = (v: any, n: number, fill = 0): number[] => (Array.isArray(v) ? v.slice(0, n).map(Number) : new Array(n).fill(fill));
 
@@ -30,6 +31,15 @@ export const APPLY: Record<string, ApplyFn> = {
     item.quality.fold = r.score;
     item.surface.layers = Math.round(Number(r.data.layers ?? 8));
     item.surface.patternClarity = clamp(Number(r.data.clarity ?? r.score));
+  },
+  damascus: (item, r) => {
+    // Cosmetic only: the forge score counts as folding work, like any pattern-weld.
+    item.quality.fold = r.score;
+    const forge = clamp(Number(r.data.forge ?? r.score));
+    const d = rollDamascus(item.seed, item.materials.primary, item.materials.secondary, forge, Number(r.data.layers ?? 32));
+    item.surface.damascus = d;
+    const c = rareColor(d.color);
+    r.summary = `${r.summary ? r.summary + ' ' : ''}${describeDamascus(d)}${c ? ` — ✦ a rare ${c.name} bloom!` : '.'}`;
   },
   hammer: (item, r) => {
     item.quality.shaping = r.score;
@@ -91,7 +101,7 @@ export const APPLY: Record<string, ApplyFn> = {
 
 /** Map stage → minigame id. */
 export const STAGE_MINIGAME: Record<string, string> = {
-  heat: 'heat', anneal: 'anneal', fusion: 'fusion', fold: 'fold', hammer: 'hammer', grind: 'grind',
+  heat: 'heat', anneal: 'anneal', fusion: 'fusion', fold: 'fold', damascus: 'fold', hammer: 'hammer', grind: 'grind',
   inlay: 'assembly', surface: 'polish', hilt: 'assembly', engrave: 'engrave', infusion: 'constellation', finish: 'inspect',
 };
 

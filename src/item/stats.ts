@@ -3,11 +3,11 @@
 //  4. finishing quality   5. component compatibility
 // Material sets a ceiling/character; craftsmanship decides how much of it is realised.
 
-import { clamp, mean, stdev } from '../core/util';
-import { compatibility, hasMat, mat, UNIT_COST } from '../data/materials';
-import { APPROACHES, findOption, palette } from '../data/options';
-import { tradition } from '../data/traditions';
-import type { Item, ItemStats, StageQuality } from './types';
+import { clamp, mean, stdev } from '../core/util.js';
+import { compatibility, hasMat, mat, UNIT_COST } from '../data/materials.js';
+import { APPROACHES, findOption, palette } from '../data/options.js';
+import { tradition } from '../data/traditions.js';
+import type { Item, ItemStats, StageQuality } from './types.js';
 
 const n = (v: number) => v / 100;
 
