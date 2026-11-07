@@ -1,4 +1,5 @@
 import './ui/style.css';
+import { inject } from '@vercel/analytics';
 import { App } from './app';
 import { audio } from './audio/audio';
 import { el } from './core/util';
@@ -56,6 +57,7 @@ function title() {
   root.append(screen);
 }
 
+inject();
 unlockAudio();
 title();
 void addMaterial;
