@@ -92,10 +92,10 @@ try {
         await sleep(60);
         continue;
       }
-      const go = page.locator('.craft-side .panel-foot button.primary');
+      const go = page.locator('.craft-side .panel-foot button.primary:not([disabled])');
       if (await go.count()) {
         if (shots < 12) await shot(`${tag}-stage-${shots++}`);
-        await go.first().click();
+        await go.first().click({ timeout: 2000 }).catch(() => {});
         await sleep(350);
         continue;
       }
