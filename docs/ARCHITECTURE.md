@@ -4,7 +4,7 @@ This document covers the Phase 0 deliverables: the feature breakdown, the system
 
 ## Technology
 
-- **TypeScript + Vite.** Static web app. All game state lives in `localStorage`. The one exception is the optional online market showcase: a Vercel function (`api/showcase.ts`, logic in `server/`) backed by Upstash Redis, with an in-memory stand-in during `vite dev`/`preview`. Modules that function imports use explicit `.js` import extensions, because Vercel runs it as plain Node ESM (a test enforces this).
+- **TypeScript + Vite.** Static web app. All game state lives in `localStorage`. The one exception is the optional online market showcase: a Vercel function (`api/showcase.ts`, logic in `server/`) backed by Redis (a `REDIS_URL` connection string or Upstash REST), with an in-memory stand-in during `vite dev`/`preview`. Modules that function imports use explicit `.js` import extensions, because Vercel runs it as plain Node ESM (a test enforces this).
 - **Canvas 2D** draws the workshop scene, the procedural item sprites and every minigame. All of it is pixel art, scaled with nearest-neighbour.
 - **DOM/CSS** handles menus, panels and crafting decisions, so the UI stays accessible and keyboard-navigable.
 - **Web Audio** synthesises all sound at runtime: SFX, ambience and generative music. There are no audio files.

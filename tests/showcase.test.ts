@@ -153,3 +153,47 @@ describe('vercel function', () => {
     expect(seen.size).toBeGreaterThan(5);
   });
 });
+
+describe('store selection', () => {
+  it('picks Upstash REST or a Redis connection string from the environment', async () => {
+    const { redisConfig } = await import('../server/redisStore');
+    expect(redisConfig({})).toBeNull();
+    expect(redisConfig({ REDIS_URL: 'redis://default:pw@host:6379' })).toEqual({ kind: 'tcp', url: 'redis://default:pw@host:6379' });
+    expect(redisConfig({ REDIS_URL: 'rediss://host:6380' })?.kind).toBe('tcp');
+    expect(redisConfig({ REDIS_URL: 'https://not-redis' })).toBeNull();
+    expect(redisConfig({ KV_REST_API_URL: 'https://x.upstash.io', KV_REST_API_TOKEN: 't', REDIS_URL: 'redis://h' })?.kind).toBe('rest');
+    expect(redisConfig({ UPSTASH_REDIS_REST_URL: 'https://x.upstash.io', UPSTASH_REDIS_REST_TOKEN: 't' })?.kind).toBe('rest');
+  });
+});
+
+// Runs against a real server when REDIS_TEST_URL is set (e.g. redis://localhost:6379/15 — the database is flushed).
+describe.skipIf(!process.env.REDIS_TEST_URL)('showcase on a real Redis (REDIS_URL)', () => {
+  it('posts, lists, rejects forgeries and withdraws', async () => {
+    const { createClient } = await import('redis');
+    const { TcpRedisStore } = await import('../server/tcpRedisStore');
+    const admin = createClient({ url: process.env.REDIS_TEST_URL });
+    await admin.connect();
+    await admin.flushDb();
+    const store = new TcpRedisStore(process.env.REDIS_TEST_URL!);
+    const c = client(store as any);
+    const a = damascusDagger(41), b = damascusDagger(42);
+    const ra = await c.post(toShowcasePayload(a));
+    expect(ra.status).toBe(201);
+    expect((await c.post(toShowcasePayload(b))).status).toBe(201);
+    expect((await c.post(toShowcasePayload(a))).status).toBe(409);
+    const forged = toShowcasePayload(damascusDagger(43)) as any;
+    forged.surface.damascus.index = (forged.surface.damascus.index % 1000) + 1;
+    expect((await c.post(forged)).status).toBe(422);
+    const recent = (await c.list('recent')).body as any;
+    expect(recent.total).toBe(2);
+    expect(recent.posts.map((p: any) => p.item.seed)).toEqual([42, 41]);
+    expect(((await c.list('rarest')).body as any).total).toBe(2);
+    const { id, token } = ra.body as any;
+    expect(await admin.ttl(`sc:post:${id}`)).toBeGreaterThan(80 * 24 * 3600);
+    expect((await c.del(id, 'wrong')).status).toBe(403);
+    expect((await c.del(id, token)).status).toBe(200);
+    expect(((await c.list()).body as any).total).toBe(1);
+    await admin.flushDb();
+    await admin.quit();
+  });
+});

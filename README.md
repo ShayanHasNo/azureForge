@@ -88,7 +88,11 @@ Every minigame supports mouse, touch and keyboard. Its controls are shown before
 The showcase is the game's only online feature, served by a small Vercel function (`api/showcase.ts`) backed by Redis.
 
 - **Locally**, `npm run dev` and `npm run preview` serve the same API from an in-memory store, so it works with no setup. Posts disappear when the server stops.
-- **On Vercel**, connect a Redis store to the project: *Storage → Marketplace → Upstash Redis*, then redeploy. The integration injects `KV_REST_API_URL` / `KV_REST_API_TOKEN` (`UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` also work). Until a store is connected, the Showcase tab says the market is quiet and the rest of the game is unaffected.
+- **On Vercel**, connect a Redis database to the project from the *Storage* tab (tick Production and Preview), then redeploy. Any of these work:
+  - `REDIS_URL`, a standard `redis://` or `rediss://` connection string. This is what Vercel's Redis integration provides.
+  - `KV_REST_API_URL` with `KV_REST_API_TOKEN`, or `UPSTASH_REDIS_REST_URL` with `UPSTASH_REDIS_REST_TOKEN` (Upstash's REST API).
+
+  Until a database is connected, the Showcase tab says the market is quiet and the rest of the game is unaffected. Check a deployment by opening `/api/showcase?sort=recent`: an empty `posts` list means it's connected.
 
 Posts are public and only lightly moderated: names are length-capped and stripped of control characters. Crafting history never leaves the player's save. Every field is validated against the game's own data, and a Damascus pattern is checked against the blade's seed, so a forged index or colour is rejected. Each address may post 5 pieces an hour. The newest 1000 posts are kept, each for up to 90 days, and players can withdraw their own.
 
