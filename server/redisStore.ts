@@ -1,13 +1,23 @@
-// Showcase store on Upstash Redis (add "Upstash Redis" to the Vercel project
-// from the Marketplace — it injects the REST URL and token below).
+// Showcase store on Upstash Redis over its REST API. Also picks which store
+// the deployment's environment variables point at (see storeFromEnv).
 
 import { Redis } from '@upstash/redis';
 import type { ShowcaseStore } from './showcaseCore.js';
 
-export function redisConfig(env: Record<string, string | undefined>): { url: string; token: string } | null {
+export type RedisConfig = { kind: 'rest'; url: string; token: string } | { kind: 'tcp'; url: string };
+
+/**
+ * Which Redis the deployment is connected to:
+ *  - Upstash REST: KV_REST_API_URL + KV_REST_API_TOKEN, or UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN
+ *  - any Redis connection string: REDIS_URL (or KV_URL), e.g. from Vercel's Redis integration
+ */
+export function redisConfig(env: Record<string, string | undefined>): RedisConfig | null {
   const url = env.KV_REST_API_URL || env.UPSTASH_REDIS_REST_URL;
   const token = env.KV_REST_API_TOKEN || env.UPSTASH_REDIS_REST_TOKEN;
-  return url && token ? { url, token } : null;
+  if (url && token) return { kind: 'rest', url, token };
+  const conn = env.REDIS_URL || env.KV_URL;
+  if (conn && /^rediss?:\/\//.test(conn)) return { kind: 'tcp', url: conn };
+  return null;
 }
 
 export class RedisStore implements ShowcaseStore {
