@@ -90,8 +90,8 @@ class Grind extends BaseMinigame {
     const props = env.material.props;
     const hard = clamp((props?.hardness ?? 50) / 100);
     const work = clamp((props?.workability ?? 70) / 100);
-    this.lagK = lerp(9, 3.5, hard);
-    this.rate = this.tune(0.12, 0.09) * lerp(1.35, 0.6, hard) * (this.mode === 'delicate' ? 0.55 : 1);
+    this.lagK = lerp(10, 4.5, hard);
+    this.rate = this.tune(0.3, 0.24) * lerp(1.35, 0.6, hard) * (this.mode === 'delicate' ? 0.75 : 1);
     this.wob = (1 - work) * 0.9;
     this.tol = this.isShield
       ? this.tune(0.08, 0.04)
@@ -104,10 +104,17 @@ class Grind extends BaseMinigame {
     if (this.isShield) {
       this.dents = [...(env.item.shield?.dents ?? new Array(8).fill(0))].slice(0, 8).map((v) => clamp(Number(v) || 0));
       while (this.dents.length < 8) this.dents.push(0);
+      // an unworked face (no hammer stage) still has a few rough spots to planish
+      if (Math.max(...this.dents) < 0.01) this.dents = this.dents.map(() => this.rng.range(0.08, 0.35));
     } else {
       const b = env.item.blade!;
       const norm = (a: number[]) => { const o = (a ?? []).slice(0, SEGMENTS).map((v) => clamp(Number(v) || 0, -0.6, 0.6)); while (o.length < SEGMENTS) o.push(0); return o; };
       this.dev = [norm(b.leftDev), norm(b.rightDev)];
+      // A piece that was never hammered (e.g. Glassgarden crystal, which skips the hammer)
+      // arrives as a rough-grown blank: real excess material to grind away.
+      if (Math.max(...this.dev[0].map(Math.abs), ...this.dev[1].map(Math.abs)) < 0.01) {
+        this.dev = [0, 1].map(() => this.dev[0].map(() => this.rng.range(0.03, 0.13)));
+      }
       this.buildTargets();
       this.tgtItem.blade!.leftDev = [...this.tgt[0]];
       this.tgtItem.blade!.rightDev = [...this.tgt[1]];
@@ -293,7 +300,7 @@ class Grind extends BaseMinigame {
         u = clamp(inward / 24);
       }
     }
-    if (this.isDown('Space', 'KeyG')) { this.kbU = Math.min(1, this.kbU + dt * 1.6); u = Math.max(u, this.kbU); }
+    if (this.isDown('Space', 'KeyG')) { this.kbU = Math.min(1, this.kbU + dt * 1.3); u = Math.max(u, this.kbU); }
     else this.kbU = 0;
     if (this.env.quirk === 'bursts') u *= 0.6 + 0.8 * (0.5 + 0.5 * Math.sin(this.t * 2.1));
     this.pressure += (u - this.pressure) * (1 - Math.exp(-dt * this.lagK));

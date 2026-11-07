@@ -77,8 +77,8 @@ class Fusion extends BaseMinigame {
     this.target = this.rng.range(0.3, 0.7);
     this.rateB = this.rng.range(0.7, 1.35);
     const vol = ((this.matA.prep?.volatility ?? 0.08) + (this.matB.prep?.volatility ?? 0.08)) / 2;
-    this.amp = clamp(this.tune(0.12, 0.3) + vol * 1.3, 0.1, 0.65);
-    this.tau = this.tune(0.7, 1.2);
+    this.amp = clamp(this.tune(0.1, 0.25) + vol * 1.2, 0.1, 0.6);
+    this.tau = this.tune(0.7, 1.05);
     this.tol = this.tune(0.06, 0.03) * (env.quirk === 'bursts' ? 1.3 : 1);
     for (let i = 0; i < 6; i++) this.ph.push(this.rng.range(0, Math.PI * 2));
     this.surgeTimer = this.nextSurge() + 1.5;
@@ -230,7 +230,7 @@ class Fusion extends BaseMinigame {
     const act = Math.max(0.001, this.active);
     const closeness = clamp(this.closeSum / act);
     const inBand = clamp(this.inBandTime / act);
-    const volatility = clamp(this.churn / act / 0.15);
+    const volatility = clamp(this.churn / act / 0.18);
     const stability = 1 - volatility;
     const mix = clamp(this.mixSum / act, 0.15, 0.85);
     const score = clamp(closeness * 0.8 + stability * 0.2);

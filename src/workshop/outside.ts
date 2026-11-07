@@ -2,7 +2,7 @@
 // season's hints in the lane outside. Static layers are cached; clouds,
 // stars, weather and drifting leaves animate per frame.
 
-import { hash32, noise2, valueNoise } from '../core/rng';
+import { noise2, valueNoise } from '../core/rng';
 import { mixHex } from '../core/util';
 import type { WinGeo } from './layout';
 import { C2D, disc, ellipse, makeCanvas, P, R, rgba } from './px';
@@ -282,5 +282,3 @@ export class OutsideView {
     c.restore();
   }
 }
-
-export function hashSeason(s: string) { return hash32(s.length, s.charCodeAt(0)); }
