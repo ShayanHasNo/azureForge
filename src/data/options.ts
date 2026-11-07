@@ -190,7 +190,7 @@ export const ENGRAVINGS: OptionDef[] = [
   o('geometric', 'Geometric', 'Zigzags and diamonds.', ['geometric'], undefined, 0.25),
   o('mountains', 'Ridgeline', 'A mountain ridge near the guard.', ['mountain'], undefined, 0.2),
   o('runes', 'Runes', 'A column of old runes.', ['ancient', 'mystic'], undefined, 0.35),
-  o('knotwork', 'Knotwork', 'Interlaced crossing bands.', ['knot', 'ancient'], { upgrade: 'loupe' }, 0.45),
+  o('knotwork', 'Knotwork', 'Interlaced crossing bands.', ['knot', 'ancient'], { upgrade: 'loupe', journal: 'journal_ancients' }, 0.45),
   o('stars', 'Starfield', 'Scattered stars on a thread of light.', ['celestial', 'starry'], undefined, 0.3),
   o('flames', 'Flames', 'Tongues of flame rising from the guard.', ['fiery'], undefined, 0.35),
   o('feather', 'Feather', 'A central quill with angled barbs.', ['feather', 'light'], { upgrade: 'loupe' }, 0.4),
