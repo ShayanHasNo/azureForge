@@ -9,11 +9,10 @@ import { noise2, valueNoise } from '../core/rng';
 import { clamp, hexToRgb, mixHex } from '../core/util';
 import type { Item } from '../item/types';
 import { BgInput, bgKey, BgResult, buildBackground } from './background';
-import { ANVIL_BASE_Y, CEIL, FLOOR_Y, H, STATION_LABELS, StationDef, StationId, W, WALK_X0, WALK_X1, WALK_Y0, WALK_Y1 } from './layout';
+import { ANVIL_BASE_Y, CEIL, FLOOR_Y, H, STATION_LABELS, StationDef, StationId, W, WALK_X0, WALK_X1, WALK_Y0, WALK_Y1, windowGeo } from './layout';
 import { OutsideView, Phase, Season, Weather } from './outside';
 import { playerFrames, SPRITE_H, SPRITE_W } from './player';
-import { BRASS, C2D, disc, ellipse, H as HL, IRON, L, makeCanvas, P, R, rgba, V } from './px';
-import { windowGeo } from './layout';
+import { BRASS, C2D, disc, ellipse, H as HL, L, makeCanvas, P, R, rgba, V } from './px';
 
 export type { StationId } from './layout';
 export { STATION_LABELS } from './layout';
@@ -44,7 +43,7 @@ interface Particle { x: number; y: number; vx: number; vy: number; life: number;
 interface Light { x: number; y: number; r: number; col: string; a: number; punch: number }
 
 const FONT = '"Pixelify Sans", monospace';
-const FONT_PX = 8;
+const FONT_PX = 10;
 const SPEED = 54; // px / s
 const LETTERBOX = '#150d09';
 
@@ -52,7 +51,7 @@ const AMBIENT: Record<Phase, { col: string; a: number }> = {
   morning: { col: '#2a1630', a: 0.2 },
   afternoon: { col: '#1e1428', a: 0.1 },
   evening: { col: '#24102a', a: 0.5 },
-  night: { col: '#060818', a: 0.76 },
+  night: { col: '#060818', a: 0.7 },
 };
 
 const FLAME = ['#d8401a', '#ff8a28', '#ffd050', '#fff4c0'];
@@ -523,10 +522,9 @@ export class WorkshopScene {
     const g = this.bg!.win;
     const dx = st.phase === 'morning' ? 34 : st.phase === 'afternoon' ? -26 : -46;
     const w = g.w - 6;
-    const x0 = g.x + 3, y0 = g.y + 3, y1 = g.y + g.h - 3;
+    const x0 = g.x + 3, y0 = g.y + 3;
     const fy = FLOOR_Y + 40;
     const pts: [number, number][] = [[x0, y0], [x0 + w, y0], [x0 + w + dx + 10, fy], [x0 + dx - 6, fy]];
-    void y1;
     const a = (st.phase === 'evening' ? 0.1 : 0.16) * (st.weather === 'clear' ? 1 : st.weather === 'cloudy' ? 0.45 : 0.3);
     const col = g.kind === 'stained' ? '#ffd0a0' : st.phase === 'morning' ? '#ffe2a0' : st.phase === 'afternoon' ? '#fff6e0' : '#ffa070';
     return { pts, a, col };
@@ -756,7 +754,10 @@ export class WorkshopScene {
       const a = st.forgeLit ? 0.6 + 0.3 * this.flick : 0.25;
       for (const e of bg.dragonEyes) {
         HL(c, e.x - 2, e.x + 2, e.y, rgba(st.forgeLit ? '#ffb030' : '#a83a1a', a));
-        P(c, e.x, e.y, rgba('#fff0a0', a * 0.8));
+        HL(c, e.x - 1, e.x + 1, e.y, rgba('#fff0a0', a * 0.7));
+        c.globalCompositeOperation = 'lighter';
+        ellipse(c, e.x, e.y, 4, 1.5, rgba('#ff9030', a * 0.25));
+        c.globalCompositeOperation = 'source-over';
       }
     }
     // lane light through the door pane after dusk
@@ -846,53 +847,36 @@ export class WorkshopScene {
 
   private drawCat(c: C2D, x: number, by: number, reduced: boolean) {
     const t = this.t;
-    const breath = reduced ? 0 : Math.sin(t * 1.7) > 0.2 ? 1 : 0;
+    const inhale = !reduced && Math.sin(t * 1.7) > 0.2;
     const flickAge = t - this.catFlick;
-    const flick = !reduced && flickAge >= 0 && flickAge < 0.6;
+    const flick = !reduced && flickAge >= 0 && flickAge < 0.7;
     const ear = !reduced && t < this.catEar && t > this.catEar - 0.25;
-    const O = '#2a160c';
-    const body = (col: string | null, ox: number, oy: number) => {
-      const cc = (k: string) => col || k;
-      // body loaf
-      ellipse(c, x + 8 + ox, by - 3 + oy, 6, 2.5 + breath * 0.5, cc('#d8803a'));
-      R(c, x + 3 + ox, by - 2 + oy, 11, 2, cc('#d8803a'));
-      // head
-      disc(c, x + 2 + ox, by - 3 + oy, 2.5, cc('#e08c44'));
-      // ears
-      P(c, x + 0 + ox, by - 6 + oy - (ear ? 1 : 0), cc('#d8803a'));
-      P(c, x + 3 + ox, by - 6 + oy, cc('#d8803a'));
-      P(c, x + 0 + ox, by - 5 + oy, cc('#e08c44'));
-      P(c, x + 3 + ox, by - 5 + oy, cc('#e08c44'));
-      // tail curled along the front
-      if (flick) {
-        const up = Math.sin(flickAge * 10) > 0 ? 1 : 0;
-        HL(c, x + 6 + ox, x + 14 + ox, by - 1 + oy, cc('#c8702e'));
-        P(c, x + 5 + ox, by - 2 + oy - up, cc('#c8702e'));
-        P(c, x + 4 + ox, by - 3 + oy - up, cc('#f0e0c8'));
-      } else {
-        HL(c, x + 5 + ox, x + 14 + ox, by - 1 + oy, cc('#c8702e'));
-        P(c, x + 4 + ox, by - 1 + oy, cc('#f0e0c8'));
+    const grid = CAT.map((r) => r.split(''));
+    if (inhale) {
+      // the round back rises a pixel
+      for (let col = 7; col <= 13; col++) {
+        let r = 0;
+        while (r < grid.length && grid[r][col] === '.') r++;
+        if (r > 0 && r < grid.length) { grid[r][col] = 'O'; grid[r - 1][col] = 'o'; }
       }
-    };
-    // outline pass then colour
-    for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) body(O, ox, oy);
-    body(null, 0, 0);
-    // stripes
-    for (const sx of [7, 10, 13]) { P(c, x + sx, by - 5 - breath + (sx === 13 ? 1 : 0), '#a8561e'); P(c, x + sx, by - 4 - breath + 1, '#b8662a'); }
-    P(c, x + 1, by - 5, '#a8561e');
-    // inner ears
-    P(c, x + 0, by - 5 - (ear ? 1 : 0), '#f0a0a0'); P(c, x + 3, by - 5, '#f0a0a0');
-    // closed eyes, nose, cheek
-    P(c, x + 1, by - 3, '#4a2410'); P(c, x + 3, by - 3, '#4a2410');
-    P(c, x + 2, by - 2, '#f08a8a');
-    P(c, x + 0, by - 2, '#f6e6cc'); P(c, x + 4, by - 2, '#f6e6cc');
-    // forelimb tucked
-    P(c, x + 5, by - 1, '#f6e6cc');
+    }
+    if (flick) {
+      const up = Math.sin(flickAge * 12) > 0;
+      grid[7][2] = 'T'; grid[6][1] = up ? 'L' : 'o'; grid[7][1] = up ? 'o' : 'L';
+      if (up) grid[5][1] = 'o';
+    }
+    if (ear) { grid[0][1] = '.'; grid[1][0] = 'o'; }
+    const y0 = by - grid.length;
+    for (let j = 0; j < grid.length; j++)
+      for (let i = 0; i < grid[j].length; i++) {
+        const k = grid[j][i];
+        if (k !== '.') P(c, x + i, y0 + j, CAT_PAL[k]);
+      }
     // z z z when it's late
     const st = this.state;
     if (st && (st.phase === 'night' || st.phase === 'evening') && !reduced) {
       const cyc = (t % 3.2) / 3.2;
-      const zx = Math.floor(x - 1 - cyc * 3), zy = Math.floor(by - 8 - cyc * 9);
+      const zx = Math.floor(x - 1 - cyc * 3), zy = Math.floor(y0 - 3 - cyc * 9);
       const a = cyc < 0.15 ? cyc / 0.15 : 1 - cyc;
       const col = rgba('#f0e6d0', a * 0.8);
       HL(c, zx, zx + 2, zy, col); P(c, zx + 1, zy + 1, col); HL(c, zx, zx + 2, zy + 2, col);
@@ -950,7 +934,7 @@ export class WorkshopScene {
     }
     for (const s of show) {
       const def = bg.stations.find((d) => d.id === s.id);
-      if (def) this.drawLabel(c, STATION_LABELS[s.id], s.key, def.lx, def.ly);
+      if (def) this.drawLabel(c, STATION_LABELS[s.id], s.key, def.lx, def.ly, def.lbx ?? def.lx);
     }
   }
 
@@ -975,7 +959,7 @@ export class WorkshopScene {
     for (let i = 0; i < img.data.length; i += 4) {
       const a = img.data[i + 3];
       img.data[i] = r; img.data[i + 1] = g; img.data[i + 2] = b;
-      img.data[i + 3] = a > 105 ? 255 : 0;
+      img.data[i + 3] = a > 128 ? 255 : 0;
     }
     tx.putImageData(img, 0, 0);
     cv = tc;
@@ -984,12 +968,15 @@ export class WorkshopScene {
     return cv;
   }
 
-  private drawLabel(c: C2D, text: string, key: boolean, cx: number, by: number) {
-    const ts = this.text(text, '#f6e8c8');
-    const tw = ts.width - 2;
-    const kw = key ? 10 : 0;
-    const w = tw + 8 + kw, h = 12;
-    const x = Math.round(clamp(cx - w / 2, 2, W - 2 - w));
+  private drawLabel(c: C2D, text: string, key: boolean, cx: number, by: number, bx = cx) {
+    const [title, rawDesc = ''] = text.split(' — ');
+    const desc = rawDesc ? rawDesc[0].toUpperCase() + rawDesc.slice(1) : '';
+    const t1 = this.text(title, '#ffe2a0');
+    const t2 = desc ? this.text(desc, '#e8d8bc') : null;
+    const kw = key ? 11 : 0;
+    const w = Math.max(t1.width - 2 + kw, t2 ? t2.width - 2 : 0) + 8;
+    const h = t2 ? 24 : 14;
+    const x = Math.round(clamp(bx - w / 2, 2, W - 2 - w));
     const y = Math.round(clamp(by - h - 3, 2, H - h - 2));
     const bgc = 'rgba(30,18,12,0.9)';
     R(c, x + 1, y, w - 2, h, bgc);
@@ -1002,15 +989,23 @@ export class WorkshopScene {
     const px = Math.round(clamp(cx, x + 4, x + w - 5));
     HL(c, px - 1, px + 1, y + h, bgc); P(c, px, y + h + 1, bgc);
     if (key) {
-      R(c, x + 3, y + 2, 8, 8, '#e8c070');
-      HL(c, x + 3, x + 10, y + 9, '#a87a30');
-      c.drawImage(this.text('E', '#2a1a0e'), x + 4, y + 1);
+      R(c, x + 3, y + 3, 9, 9, '#e8c070');
+      HL(c, x + 3, x + 11, y + 11, '#a87a30');
+      HL(c, x + 3, x + 11, y + 3, '#fff0b8');
+      c.drawImage(this.text('E', '#2a1a0e'), x + 5, y + 1);
     }
-    // soft drop shadow, then the text
-    c.globalAlpha = 0.5;
-    c.drawImage(this.text(text, '#000000'), x + 4 + kw, y + 2);
-    c.globalAlpha = 1;
-    c.drawImage(ts, x + 3 + kw, y + 1);
+    const shadow = (img: HTMLCanvasElement, sx: number, sy: number) => {
+      c.globalAlpha = 0.45;
+      c.drawImage(img, sx + 1, sy + 1);
+      c.globalAlpha = 1;
+    };
+    const tx = x + 3 + kw, ty = y + 2;
+    shadow(this.text(title, '#000000'), tx, ty);
+    c.drawImage(t1, tx, ty);
+    if (t2 && desc) {
+      shadow(this.text(desc, '#000000'), x + 3, y + 12);
+      c.drawImage(t2, x + 3, y + 12);
+    }
   }
 
   // ------------------------------------------------------------ blit
@@ -1033,5 +1028,19 @@ export class WorkshopScene {
 }
 
 const WOODC = '#7a5034';
+// Ember the forge cat, curled up asleep (facing left).
+const CAT = [
+  '.o..o...........',
+  'oOooOo.oooooo...',
+  'oOOOOooOOdOOOoo.',
+  'oOOOOOOOOOdOOOOo',
+  'oOeOeOOdOOOOOdOo',
+  'olOpOlOOOOOOOOOo',
+  '.ollloOOOOOOOOdo',
+  '.oLTTTTTTTTTTTo.',
+  '..oooooooooooo..',
+];
+const CAT_PAL: Record<string, string> = {
+  o: '#2a160c', O: '#d8803a', d: '#a8561e', l: '#f6e6cc', p: '#f08a8a', e: '#4a2410', T: '#c06a2c', L: '#f0e0c8',
+};
 const BASE_FLOOR = 128;
-void IRON;

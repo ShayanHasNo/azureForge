@@ -8,7 +8,7 @@ import type { Item } from '../item/types';
 import { renderItem, visualKey } from '../render/itemRenderer';
 import type { PixelImage } from '../render/pixel';
 import {
-  ANVIL_BASE_Y, BASE, CEIL, FLOOR_Y, forgeMouth, H, Mouth, Rect, StationDef, stationDefs, StationId, W, windowGeo, WinGeo,
+  ANVIL_BASE_Y, BASE, CEIL, DRAGON_FANGS, FLOOR_Y, forgeMouth, H, Mouth, Rect, StationDef, stationDefs, StationId, W, windowGeo, WinGeo,
 } from './layout';
 import { bevel, BRASS, C2D, COPPER, disc, ellipse, H as HL, IRON, L, makeCanvas, P, R, rgba, V, WOOD } from './px';
 
@@ -151,7 +151,7 @@ function wallFn(style: string): (x: number, y: number) => [RGB, number] {
   if (style === 'tiles') {
     const pal = rgbs(['#3a8478', '#448e82', '#4e9a8c', '#327a6e', '#58a496']);
     const grout = hexToRgb('#cfc6ae');
-    const deco = hexToRgb('#e4d2a0'), decoInk = hexToRgb('#b0702e');
+    const deco = hexToRgb('#cfc29a'), decoInk = hexToRgb('#3a7a6e');
     const wood = hexToRgb('#5a3a24');
     const dado = CEIL + 62;
     return (x, y) => {
@@ -161,7 +161,7 @@ function wallFn(style: string): (x: number, y: number) => [RGB, number] {
       const lx = x % 8, ly = ty % 8;
       if (lx === 0 || ly === 0) return [grout, 0.9 + noise2(s, x, y) * 0.1];
       const n = noise2(s, tx, tyi);
-      if (n > 0.9 && y < dado) {
+      if (n > 0.95 && y < dado) {
         const dx = lx - 4, dy = ly - 4;
         if ((Math.abs(dx) + Math.abs(dy) === 2 && (dx === 0 || dy === 0)) || (dx === 0 && dy === 0)) return [decoInk, 1];
         return [deco, 1 - (ly === 7 ? 0.12 : 0)];
@@ -247,11 +247,12 @@ function floorFn(style: string): (x: number, y: number) => [RGB, number] {
     const seam = hexToRgb('#3a2414');
     return (x, y) => {
       const [u, v, ppu] = floorUV(x, y);
-      const col = Math.floor(u / 10), lu = u - col * 10;
+      const cw = 16;
+      const col = Math.floor(u / cw), lu = u - col * cw;
       const dir = col % 2 === 0;
-      const k = (v * 1.4 + (dir ? lu : 10 - lu)) / 4;
+      const k = (v * 1.3 + (dir ? lu : cw - lu)) / 5.5;
       const idx = Math.floor(k), fr = k - idx;
-      if (lu < ppu * 0.9 || fr < 0.2 * ppu + 0.05) return [seam, 1];
+      if (lu < ppu * 0.9 || fr < 0.16 * ppu) return [seam, 1];
       const n = noise2(s, col, idx);
       const f = 0.9 + valueNoise(s, u * (dir ? 0.6 : 0.6), v * 1.2 + idx) * 0.18;
       return [pal[Math.floor(n * pal.length)], f];
@@ -559,7 +560,7 @@ function drawForge(c: C2D, style: string, up: Set<string>, mouth: Mouth) {
         let k = u < -0.85 ? 1 : u < -0.55 ? 2 : u < -0.35 ? 4 : u < -0.22 ? 6 : u < 0.2 ? 3 : u < 0.6 ? 2 : 1;
         if ((y - hoodTop) % 10 === 0) k = Math.max(0, k - 1);
         let col = COPPER[k];
-        if (noise2(31, x, y) > 0.94) col = '#5aa08a';
+        if (noise2(31, x >> 1, y >> 1) > 0.97 && (y > 84 || (y - hoodTop) % 10 < 2)) col = noise2(32, x, y) > 0.5 ? '#5aa08a' : '#4a8a78';
         P(c, x, y, col);
       }
     for (let y = hoodTop + 10; y < 92; y += 10) {
@@ -603,7 +604,18 @@ function drawForge(c: C2D, style: string, up: Set<string>, mouth: Mouth) {
 
   // hearth body
   if (style === 'stone') maskedStones(c, 68, 96, 114, BASE, hearthIn, STONE_PAL, '#4c443a', 23);
-  else if (style === 'dragonmaw') maskedStones(c, 68, 96, 114, BASE, hearthIn, BASALT_PAL, '#24202a', 24);
+  else if (style === 'dragonmaw') {
+    // the head is scaled like the hood, darker
+    for (let y = 96; y <= BASE; y++)
+      for (let x = 68; x <= 114; x++) {
+        const row = Math.floor((y - 96) / 3), lx = (x + (row % 2) * 2) % 4, ly = (y - 96) % 3;
+        let col = row % 2 ? '#2a3a32' : '#26342c';
+        if (ly === 2 && lx !== 0) col = '#18201c';
+        else if (ly === 0 && lx === 2) col = '#3e5446';
+        if (x === 68 || x === 114) col = '#141a16';
+        P(c, x, y, col);
+      }
+  }
   else maskedBricks(c, 68, 96, 114, BASE, hearthIn, BRICK_PAL, '#5a4a3e', 6, 3, 19);
 
   // mouth surround
@@ -614,31 +626,46 @@ function drawForge(c: C2D, style: string, up: Set<string>, mouth: Mouth) {
     for (let y = 104; y <= 120; y++) { P(c, 79, y, '#5e5648'); P(c, 103, y, '#5e5648'); }
   } else if (style === 'dragonmaw') {
     // lips of the maw
-    for (let y = 99; y <= 122; y++)
+    for (let y = 100; y <= 122; y++)
       for (let x = 76; x <= 106; x++) {
-        const e = (x - cx) ** 2 / (13.5 * 13.5) + (y - 112) ** 2 / (11.5 * 11.5);
-        if (e <= 1 && !mouth.inside(x, y)) {
-          const inner = (x - cx) ** 2 / (11.5 * 11.5) + (y - 112) ** 2 / (9.5 * 9.5) <= 1;
-          P(c, x, y, inner ? (y < 112 ? '#efe2c4' : '#d8c8a4') : y < 104 ? '#5a2a26' : '#4a2220');
-          if (inner && (y === 105 || y === 117)) P(c, x, y, '#a89a7c');
-        }
+        const e = (x - cx) ** 2 / (13.5 * 13.5) + (y - 112) ** 2 / (11.6 * 11.6);
+        if (e <= 1 && (x - cx) ** 2 / (11.5 * 11.5) + (y - 112) ** 2 / (9.5 * 9.5) > 1) P(c, x, y, y < 106 ? '#6a2a24' : '#4a1e1a');
       }
-    // brow ridges and sleepy eyes
-    for (const ex of [82, 100]) {
+    // fangs
+    for (let y = 100; y <= 121; y++)
+      for (let x = 80; x <= 102; x++) {
+        if (!DRAGON_FANGS.has(x * 1000 + y)) continue;
+        const left = !DRAGON_FANGS.has((x - 1) * 1000 + y);
+        P(c, x, y, left ? '#fff4dc' : '#d8c8a4');
+      }
+    // snout ridge + nostrils
+    for (let y = 95; y <= 101; y++) HL(c, 89, 93, y, y === 95 ? '#5a7a64' : '#34483c');
+    HL(c, 90, 92, 96, '#4a6656');
+    R(c, 87, 100, 2, 1, '#0c0a0a'); R(c, 94, 100, 2, 1, '#0c0a0a');
+    P(c, 87, 99, '#4a6656'); P(c, 95, 99, '#4a6656');
+    // heavy brows and sleepy, half-closed eyes
+    for (const ex of [81, 101]) {
       const dir = ex < cx ? -1 : 1;
-      R(c, ex - 4, 95, 9, 2, '#2e2a30'); HL(c, ex - 4, ex + 4, 95, '#5a5258');
-      R(c, ex - 2, 97, 5, 1, '#1a1012');
-      P(c, ex + 2 * dir, 96, '#1a1012');
+      HL(c, ex - 4, ex + 4, 95, '#6a8a72');
+      HL(c, ex - 4, ex + 4, 96, '#1a2420');
+      P(c, ex + 5 * dir, 94, '#6a8a72'); P(c, ex + 6 * dir, 93, '#8aa890');
+      // lid
+      HL(c, ex - 3, ex + 3, 97, '#3e5446');
+      HL(c, ex - 2, ex + 2, 98, '#0c0a0a');
+      HL(c, ex - 3, ex + 3, 99, '#18201c');
     }
-    // nostrils
-    P(c, 88, 100, '#1a1012'); P(c, 94, 100, '#1a1012');
-    // horns curling up the hood
+    // cheek frills
     for (const side of [-1, 1]) {
-      for (let i = 0; i < 16; i++) {
-        const a = i / 15;
-        const hx = cx + side * (22 + Math.sin(a * 2.6) * 6), hy = 96 - a * 18;
-        const wv = Math.round(3 - a * 2.4);
-        for (let k = 0; k < wv; k++) P(c, hx + side * k, hy, i < 3 ? '#8a7a64' : k === 0 ? '#e0d2b0' : '#bcae8e');
+      const bx = cx + side * 23;
+      for (let k = 0; k < 4; k++) { P(c, bx + side * (k % 2), 104 + k * 4, '#5a7a64'); P(c, bx + side * (1 + (k % 2)), 105 + k * 4, '#3e5446'); }
+    }
+    // horns sweeping up past the hood
+    for (const side of [-1, 1]) {
+      for (let i = 0; i < 20; i++) {
+        const a = i / 19;
+        const hx = cx + side * (19 + Math.sin(a * 2.4) * 8), hy = 95 - a * 22;
+        const wv = Math.max(1, Math.round(3.4 - a * 2.6));
+        for (let k = 0; k < wv; k++) P(c, Math.round(hx + side * k), Math.round(hy), i < 2 ? '#8a7a64' : k === 0 ? '#f0e4c4' : k === wv - 1 ? '#a8987a' : '#d4c6a4');
       }
     }
   } else {
@@ -1423,9 +1450,8 @@ export function buildBackground(i: BgInput): BgResult {
     chimes: ex.has('chimes') ? { x: 26, y: CEIL } : undefined,
     glassbloom,
     cat: ex.has('cat') ? { x: 103, y: 136 } : undefined,
-    dragonEyes: d.forge === 'dragonmaw' ? [{ x: 82, y: 97 }, { x: 100, y: 97 }] : undefined,
+    dragonEyes: d.forge === 'dragonmaw' ? [{ x: 81, y: 98 }, { x: 101, y: 98 }] : undefined,
   };
   return res;
 }
 
-export { clamp };

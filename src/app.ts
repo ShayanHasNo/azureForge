@@ -45,6 +45,8 @@ export class App {
       reducedMotion: () => this.state.settings.reducedMotion,
     });
     this.scene.start();
+    // Pause workshop walking/interaction whenever a panel is open.
+    new MutationObserver(() => this.scene?.setInputEnabled(!this.crafting && !this.root.querySelector('.overlay, .title-screen'))).observe(this.root, { childList: true });
     this.renderHud();
     window.addEventListener('keydown', this.keyHandler);
     this.updateAmbience();
@@ -161,7 +163,7 @@ export class App {
 
   setCrafting(on: boolean) {
     this.crafting = on;
-    this.scene?.setInputEnabled(!on);
+    this.scene?.setInputEnabled(!on && !modalOpen());
     this.updateAmbience();
   }
 

@@ -39,6 +39,8 @@ export interface StationDef {
   /** Where the label floats (centre x, bottom y). */
   lx: number;
   ly: number;
+  /** Optional centre x of the label box (defaults to lx). */
+  lbx?: number;
 }
 
 export function stationDefs(gallery: boolean, shelves: string): StationDef[] {
@@ -47,7 +49,7 @@ export function stationDefs(gallery: boolean, shelves: string): StationDef[] {
     { id: 'door', hit: { x: 3, y: 76, w: 31, h: 50 }, ix: 18, iy: 140, lx: 20, ly: 74 },
     { id: 'storage', hit: { x: 33, y: 58, w: 33, h: 70 }, ix: 49, iy: 140, lx: 49, ly: 56 },
     { id: 'forge', hit: { x: 64, y: 56, w: 54, h: 72 }, ix: 91, iy: 142, lx: 91, ly: 54 },
-    { id: 'anvil', hit: { x: 118, y: 118, w: 28, h: 30 }, ix: 134, iy: 156, lx: 133, ly: 116 },
+    { id: 'anvil', hit: { x: 118, y: 118, w: 28, h: 30 }, ix: 134, iy: 156, lx: 133, ly: 116, lbx: 158 },
     { id: 'finishing', hit: { x: 146, y: 92, w: 46, h: 36 }, ix: 169, iy: 142, lx: 169, ly: 90 },
     { id: 'workbench', hit: { x: 192, y: 64, w: 40, h: 64 }, ix: 211, iy: 142, lx: 211, ly: 62 },
     { id: 'journal', hit: { x: 233, y: 94, w: 27, h: 34 }, ix: 246, iy: 142, lx: 246, ly: 92 },
@@ -97,6 +99,17 @@ export function windowGeo(kind: string): WinGeo {
 }
 
 // Forge mouth --------------------------------------------------------------
+/** Fang pixels of the dragon-maw forge (x*1000+y): excluded from the fire. */
+export const DRAGON_FANGS = new Set<number>(
+  [
+    [84, 103], [85, 103], [84, 104], [85, 104], [84, 105], [85, 105], [84, 106],
+    [97, 103], [98, 103], [97, 104], [98, 104], [97, 105], [98, 105], [98, 106],
+    [88, 103], [88, 104], [91, 103], [94, 103], [94, 104],
+    [87, 120], [88, 120], [87, 119], [88, 119], [87, 118],
+    [94, 120], [95, 120], [94, 119], [95, 119], [95, 118],
+    [91, 120],
+  ].map(([x, y]) => x * 1000 + y),
+);
 export interface Mouth { x: number; y: number; w: number; h: number; inside: (x: number, y: number) => boolean }
 
 export function forgeMouth(style: string): Mouth {
@@ -105,16 +118,7 @@ export function forgeMouth(style: string): Mouth {
   if (style === 'dragonmaw')
     return {
       x, y, w, h,
-      inside: (px, py) => {
-        const cx = 91;
-        // rounded maw
-        if ((px - cx) ** 2 / (11.5 * 11.5) + (py - 112) ** 2 / (9.5 * 9.5) > 1) return false;
-        // fangs from the top and bottom jaws
-        const k = Math.abs(((px - 81) % 5) - 2);
-        if (py <= 105 && py - 103 < 2 - k && px > 81 && px < 101) return false;
-        if (py >= 118 && 120 - py < 2 - k && px > 82 && px < 100) return false;
-        return py <= 120;
-      },
+      inside: (px, py) => py <= 120 && (px - 91) ** 2 / (11.5 * 11.5) + (py - 112) ** 2 / (9.5 * 9.5) <= 1 && !DRAGON_FANGS.has(px * 1000 + py),
     };
   // arch (brick, copper hood)
   return { x, y, w, h, inside: (px, py) => py <= 120 && px >= 80 && px <= 102 && (py >= 112 || (px - 91) ** 2 + (py - 112) ** 2 <= 11.4 * 11.4) };

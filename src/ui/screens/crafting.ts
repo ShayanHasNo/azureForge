@@ -117,7 +117,8 @@ export function openCrafting(app: App, session: CraftSession | null) {
     for (const k of [...new Set(keys)]) {
       const v = cur[k] as number, b = baseline[k] as number;
       const d = v - b;
-      const shown = k === 'weight' ? `${v.toFixed(1)}kg` : String(Math.round(v));
+      const unworked = k === 'craftsmanship' && !Object.keys(ses.item.quality).length;
+      const shown = unworked ? '—' : k === 'weight' ? `${v.toFixed(1)}kg` : String(Math.round(v));
       foot.append(el('div', { class: 'mini', title: 'Projected — unfinished stages are estimated' },
         el('div', { class: 'row between' }, el('span', {}, STAT_LABELS[k]), el('span', {}, shown, Math.abs(d) >= 1 && k !== 'weight' ? el('span', { class: `delta ${d > 0 ? 'up' : 'down'}` }, ` ${d > 0 ? '+' : ''}${Math.round(d)}`) : null)),
         el('div', { class: 'bar' }, el('i', { style: { width: `${k === 'weight' ? Math.min(100, v / 3 * 100) : v}%` } }))));
@@ -268,6 +269,7 @@ export function openCrafting(app: App, session: CraftSession | null) {
     const status = el('p', { class: 'small' }, 'Working…');
     side.querySelector('.panel-body')?.prepend(el('div', { class: 'card' }, el('b', {}, def.name), status, el('p', { class: 'small muted' }, def.controls)));
     canvas.focus();
+    side.querySelectorAll('input, select, textarea, button').forEach((n) => ((n as HTMLInputElement).disabled = true));
     const inst = def.create({ ...env, canvas, onStatus: (t) => (status.textContent = t) });
     mg = inst;
     const before = computeStats(ses.item);

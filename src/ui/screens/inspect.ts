@@ -78,7 +78,7 @@ export function openItem(app: App, item: Item, opts: { fresh?: boolean; onChange
   info.append(tabHost);
   wrap.append(show, info);
   m.body.append(wrap);
-  const fit = () => { const r = show.getBoundingClientRect(); sc.setBox(Math.max(200, Math.floor(r.width)), Math.max(300, Math.floor(r.height))); };
+  const fit = () => { const r = show.getBoundingClientRect(); sc.setBox(Math.max(200, Math.floor(r.width)), Math.max(300, Math.min(Math.floor(r.height), window.innerHeight - 240))); };
   requestAnimationFrame(fit);
 
   if (owned) {

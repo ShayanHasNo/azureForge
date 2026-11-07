@@ -23,7 +23,7 @@ const NOUNS: Record<string, string[]> = {
   sword: ['Blade', 'Sword', 'Brand', 'Edge', 'Longblade'], dagger: ['Dagger', 'Knife', 'Fang', 'Thorn', 'Dirk'], shield: ['Shield', 'Ward', 'Bulwark', 'Aegis', 'Guard'],
 };
 const DIRECTION_ADJ: Record<string, string[]> = {
-  elegant: ['Graceful', 'Slender', 'Fine'], heavy: ['Stout', 'Heavy', 'Broad'], ornamental: ['Gilded', 'Ornate', 'Adorned'], minimalist: ['Plain', 'Quiet', 'Clean'],
+  elegant: ['Graceful', 'Slender', 'Willow'], heavy: ['Stout', 'Heavy', 'Broad'], ornamental: ['Gilded', 'Ornate', 'Adorned'], minimalist: ['Plain', 'Quiet', 'Clean'],
   ancient: ['Old', 'Barrow', 'Elder'], rustic: ['Hearth', 'Village', 'Homespun'], ceremonial: ['Oath', 'Hall', 'Crowned'], nature: ['Wild', 'Green', 'Rooted'],
   experimental: ['Curious', 'Strange', 'Wandering'],
 };
@@ -103,7 +103,7 @@ export function generateDescription(item: Item): string {
   if (e.pattern !== 'none') {
     const hand = e.crispness > 0.82 ? 'cut with real precision' : e.crispness > 0.6 ? 'cut with a steady hand' : 'wandering here and there — clearly cut by hand';
     parts.push(`Its ${surf.replace(/^an? /, '')} carries a ${optionName('engraving', e.pattern).toLowerCase()} engraving${e.inlay ? ` inlaid in ${palette(item.design.palette).name.toLowerCase()} tones` : ''}, ${hand}.`);
-  } else parts.push(`The surface shows ${surf}${item.finish.finish !== 'matte' ? ` under a ${optionName('finish', item.finish.finish).toLowerCase()} finish` : ''}.`);
+  } else parts.push(`It has ${surf}${item.finish.finish !== 'matte' ? ` under a ${optionName('finish', item.finish.finish).toLowerCase()} finish` : ' and a soft matte finish'}.`);
 
   if (item.hilt) {
     const pom = optionName('pommel', item.hilt.pommel).toLowerCase();

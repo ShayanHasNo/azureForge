@@ -5,7 +5,9 @@
 //
 //   npm run build && node scripts/e2e.mjs [outdir]
 //
-import { chromium } from 'playwright';
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+const { chromium } = require('playwright');
 import { spawn } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 
@@ -65,7 +67,7 @@ try {
     await sleep(600);
     const t0 = Date.now();
     let shots = 0;
-    while (Date.now() - t0 < 420000) {
+    while (Date.now() - t0 < 900000) {
       if (await page.locator('text=Admire & close').count()) break;
       const cont = page.locator('.result-card button:has-text("Continue")');
       if (await cont.count()) { await cont.first().click(); await sleep(300); continue; }
@@ -74,7 +76,7 @@ try {
       const mg = page.locator('canvas.mg');
       if (await mg.count()) {
         if (shots < 12 && Math.random() < 0.08) await shot(`${tag}-mg-${shots++}`);
-        const box = await mg.boundingBox();
+        const box = await mg.first().boundingBox({ timeout: 500 }).catch(() => null);
         // Mixed input: taps, holds, sweeps, keys — enough to complete any minigame.
         const r = Math.random();
         if (box && r < 0.35) {
@@ -108,7 +110,8 @@ try {
 
   await craft('Sword', 'Traditional Foundry', '10-foundry');
   const crafted = [['Dagger', 'Patternwrights', '11-pattern'], ['Shield', 'Mountain', '12-mountain'], ['Sword', 'Celestial', '13-celestial'], ['Dagger', 'Glassgarden', '14-glass'], ['Sword', 'Experimental', '15-exp']];
-  for (const c of (process.env.QUICK ? [] : crafted)) await craft(...c);
+  const only = process.env.ONLY ? process.env.ONLY.split(',') : null;
+  for (const c of (process.env.QUICK ? [] : crafted)) if (!only || only.some((o) => c[1].includes(o))) await craft(...c);
 
   const before = await page.evaluate(() => window.__app.state.items.map((i) => ({ id: i.id, craft: i.stats.craftsmanship, name: i.name })));
   log('items', JSON.stringify(before));

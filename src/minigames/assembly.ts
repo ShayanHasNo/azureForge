@@ -104,6 +104,8 @@ interface Comp {
 interface Socket { t: number; u: number; pos: V; shape: V[]; ang: number; filled: boolean; type: string }
 interface Stone { type: string; socket: number; pos: V; ang: number; placed: boolean; res?: { t: number; u: number; rot: number; posErr: number; rotErr: number } }
 
+const GUIDE_AFTER = 6;
+
 interface Btn { id: 'rotL' | 'rotR' | 'seat'; x: number; y: number; w: number; h: number; label: string }
 
 class Assembly extends BaseMinigame {
@@ -393,6 +395,8 @@ class Assembly extends BaseMinigame {
   }
   private rimCentre(): V { return [this.xf.cx, this.xf.cy]; }
 
+  private misses = 0;
+
   // ------------------------------------------------------------ update
   protected update(dt: number) {
     this.hintCool = Math.max(0, this.hintCool - dt);
@@ -418,12 +422,20 @@ class Assembly extends BaseMinigame {
     const disp: V = [c.pos[0] + sw.d[0], c.pos[1] + sw.d[1]];
     const ang = c.ang + sw.a;
     const s = this.xf.s;
-    const dx = (disp[0] - c.target[0]) / s, dy = (disp[1] - c.target[1]) / s;
+    let dx = (disp[0] - c.target[0]) / s, dy = (disp[1] - c.target[1]) / s;
     if (Math.abs(dx) > 7 || Math.abs(dy) > 7) {
-      this.env.audio.sfx('soft');
-      this.floatText('Bring it onto the glowing socket', disp[0], disp[1] - 20, COLORS.paper);
-      return;
+      this.misses++;
+      if (this.misses < GUIDE_AFTER) {
+        this.env.audio.sfx('soft');
+        this.floatText(this.misses >= GUIDE_AFTER - 2 ? 'Nearly there — it will guide itself in' : 'Bring it onto the glowing socket', disp[0], disp[1] - 20, COLORS.paper);
+        return;
+      }
+      // Gentle fallback so nobody is ever stuck: the part slides in, but only roughly.
+      const k = 6.5 / Math.max(Math.abs(dx), Math.abs(dy));
+      dx *= k; dy *= k;
+      disp[0] = c.target[0] + dx * s; disp[1] = c.target[1] + dy * s;
     }
+    this.misses = 0;
     c.res = { dx, dy, ang };
     c.seated = true;
     c.anim = 0;
@@ -465,10 +477,19 @@ class Assembly extends BaseMinigame {
       if (d < bd) { bd = d; best = i; }
     });
     if (best < 0 || bd > this.stoneR * 1.7) {
-      if (inp.confirm && this.hintCool <= 0) { this.hintCool = 0.8; this.floatText('Drop it into a socket', disp[0], disp[1] - 16, COLORS.paper); }
-      return;
+      if (inp.confirm) this.misses++;
+      if (this.misses < GUIDE_AFTER) {
+        if (inp.confirm && this.hintCool <= 0) { this.hintCool = 0.8; this.floatText('Drop it into a socket', disp[0], disp[1] - 16, COLORS.paper); }
+        return;
+      }
+      // Fallback: guide the stone roughly into its own socket.
+      const so = this.sockets[st.socket];
+      disp[0] = so.pos[0] + this.stoneR * 1.2; disp[1] = so.pos[1];
+      best = st.socket; bd = this.stoneR * 1.2;
     }
+    this.misses = 0;
     if (best !== st.socket) {
+      this.misses++;
       this.care = Math.max(0, this.care - 0.06);
       this.env.audio.sfx('soft');
       this.floatText('Not this shape', disp[0], disp[1] - 16, COLORS.ok);
@@ -508,12 +529,17 @@ class Assembly extends BaseMinigame {
     if (!inp.confirm) return;
     const sw = this.swayOf(0.7, 1 - 0.08 * this.rimPins);
     const off: V = [(this.rimOff[0] + sw.d[0]) / this.xf.s, (this.rimOff[1] + sw.d[1]) / this.xf.s];
+    if (Math.hypot(off[0], off[1]) > 9 && ++this.misses >= GUIDE_AFTER) {
+      const k = 8 / Math.hypot(off[0], off[1]);
+      off[0] *= k; off[1] *= k;
+    }
     if (Math.hypot(off[0], off[1]) > 9) {
       this.env.audio.sfx('soft');
       const p = this.rimEdge(seat.ang);
       this.floatText('Line up the markers first', p[0], p[1] - 14, COLORS.paper);
       return;
     }
+    this.misses = 0;
     seat.done = true;
     seat.res = off;
     this.rimPins++;
