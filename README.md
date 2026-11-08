@@ -80,7 +80,7 @@ Every minigame supports mouse, touch and keyboard. Its controls are shown before
   - Historical journals and mastery challenges round out the world.
 - **A customizable workshop:** decor, little touches (yes, there's a cat), tools that add new mechanics, a display rack showing your real creations, and a collection room.
 - **Synthesized audio.** Generative ambient music, fire, rain, wind and village ambience, plus crafting sounds. Music, ambience and crafting sounds each have their own volume.
-- **Accessibility:** a Relaxed crafting mode, reduced motion, high-contrast panels, interface scaling and keyboard play.
+- **Accessibility:** a Relaxed crafting mode, a readable text font (Atkinson Hyperlegible, or switch back to the classic pixel font), reduced motion, high-contrast panels, interface scaling and keyboard play.
 - **Saving.** The game autosaves after every stage, keeps a rolling backup, and supports JSON export/import. An unfinished piece is saved and can be resumed.
 
 ## The online market showcase
