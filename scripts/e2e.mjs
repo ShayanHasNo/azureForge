@@ -14,7 +14,9 @@ import { mkdirSync } from 'node:fs';
 const out = process.argv[2] || 'test-results';
 mkdirSync(out, { recursive: true });
 const PORT = 5287;
-const server = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort'], { stdio: 'pipe' });
+// Own process group, so the whole npx → vite tree can be stopped at the end.
+const server = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort'], { stdio: 'ignore', detached: true });
+const stopServer = () => { try { process.kill(-server.pid, 'SIGTERM'); } catch { server.kill(); } };
 await new Promise((r) => setTimeout(r, 2500));
 const url = `http://localhost:${PORT}/`;
 
@@ -170,7 +172,8 @@ try {
   await shot('99-failure').catch(() => {});
 } finally {
   await browser.close();
-  server.kill();
+  stopServer();
 }
 if (errors.length) { console.error('[e2e] ERRORS:\n' + errors.join('\n')); process.exit(1); }
 log('PASS');
+process.exit(0);

@@ -82,6 +82,7 @@ export class App {
     const st = this.state.settings;
     document.documentElement.style.setProperty('--scale', String(st.uiScale));
     document.body.classList.toggle('hc', st.highContrast);
+    document.body.classList.toggle('font-pixel', st.textFont === 'pixel');
     audio.setVolumes({ master: st.master, music: st.music, ambient: st.ambient, sfx: st.sfx });
   }
 

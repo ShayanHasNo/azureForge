@@ -16,11 +16,19 @@
   --cool: #5a8ac0;
   --focus: #ffd27a;
   --scale: 1;
-  --font: 'Pixelify Sans', 'Silkscreen', 'Courier New', monospace;
+  --font-pixel: 'Pixelify Sans', 'Silkscreen', 'Courier New', monospace;
+  --font-text: 'Atkinson Hyperlegible', system-ui, 'Segoe UI', Roboto, sans-serif;
+  --font: var(--font-text);
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: var(--bg); color: var(--paper); font-family: var(--font); overflow: hidden; }
-body { font-size: calc(15px * var(--scale)); -webkit-font-smoothing: none; }
+body { font-size: calc(16px * var(--scale)); }
+/* Titles, buttons and game chrome keep the pixel font; body text uses --font-text. */
+h1, h2, h3, .panel-head, .btn, .tab, .hud .chip, .step, .grade, .namefield, .dm-index, .bottombar, .title-screen h1 {
+  font-family: var(--font-pixel); -webkit-font-smoothing: none;
+}
+/* Settings → Text font: Pixel restores the all-pixel look. */
+body.font-pixel { --font-text: var(--font-pixel); -webkit-font-smoothing: none; }
 canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
 button, input, select, textarea { font-family: inherit; font-size: inherit; }
 #app { position: fixed; inset: 0; }
@@ -79,7 +87,7 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; }
 .tab:focus-visible { outline: 2px solid var(--focus); }
 h3 { margin: 14px 0 6px; font-size: 1.05em; color: var(--ink); border-bottom: 2px dashed var(--paper-dd); padding-bottom: 3px; }
 h3:first-child { margin-top: 0; }
-p { margin: 6px 0; line-height: 1.35; }
+p { margin: 6px 0; line-height: 1.45; }
 .muted { color: var(--ink-soft); }
 .small { font-size: .86em; }
 .grid { display: grid; gap: 8px; }

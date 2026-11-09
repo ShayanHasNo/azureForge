@@ -22,11 +22,13 @@ export interface Settings {
   colorblind: boolean;
   uiScale: number;
   showDetailedStats: boolean;
+  /** UI body text: a clear readable font, or the classic pixel font. */
+  textFont: 'readable' | 'pixel';
 }
 
 export const DEFAULT_SETTINGS: Settings = {
   master: 0.8, music: 0.45, ambient: 0.6, sfx: 0.8, difficulty: 'adaptive',
-  reducedMotion: false, highContrast: false, colorblind: false, uiScale: 1, showDetailedStats: false,
+  reducedMotion: false, highContrast: false, colorblind: false, uiScale: 1, showDetailedStats: false, textFont: 'readable',
 };
 
 export interface Request {

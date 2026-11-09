@@ -32,6 +32,11 @@ export function openSettings(app: App) {
   const scale = el('input', { type: 'range', min: 0.85, max: 1.4, step: 0.05, value: s.uiScale, 'aria-label': 'Interface scale' }) as HTMLInputElement;
   scale.onchange = () => { s.uiScale = Number(scale.value); app.applySettings(); };
   m.body.append(el('div', { class: 'ctl' }, el('b', {}, 'Interface scale'), scale));
+  const font = el('select', { 'aria-label': 'Text font' }) as HTMLSelectElement;
+  for (const [v, n] of [['readable', 'Readable — clear, easy-to-read text (recommended)'], ['pixel', 'Pixel — the classic pixel-art look everywhere']]) font.append(el('option', { value: v }, n));
+  font.value = s.textFont ?? 'readable';
+  font.onchange = () => { s.textFont = font.value as 'readable' | 'pixel'; app.applySettings(); };
+  m.body.append(el('div', { class: 'ctl' }, el('b', {}, 'Text font'), font, el('div', { class: 'help' }, 'Titles and buttons keep the pixel font either way.')));
   m.body.append(el('h3', {}, 'Save data'), el('p', { class: 'small muted' }, 'The game saves automatically after every stage, purchase and finished piece.'));
   const fileIn = el('input', { type: 'file', accept: '.json,application/json', class: 'hidden' }) as HTMLInputElement;
   fileIn.onchange = async () => {
