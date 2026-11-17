@@ -106,6 +106,7 @@ p { margin: 6px 0; line-height: 1.45; }
 .tag.good { background: var(--good); }
 .tag.cool { background: var(--cool); }
 .tag.bad { background: var(--bad); }
+.tag.legacy { background: #6a5a8a; }
 .toast-root { position: absolute; right: 12px; bottom: 50px; display: flex; flex-direction: column; gap: 6px; z-index: 50; pointer-events: none; max-width: min(420px, calc(100% - 24px)); }
 .toast { background: rgba(30,20,14,.94); color: var(--paper); border-left: 4px solid var(--ember); padding: 8px 12px; border-radius: 3px; animation: toast .25s ease; box-shadow: 0 4px 16px rgba(0,0,0,.5); }
 @keyframes toast { from { transform: translateX(30px); opacity: 0; } }

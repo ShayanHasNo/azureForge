@@ -11,7 +11,7 @@ import { TRADITIONS } from '../data/traditions.js';
 import { damascusConsistent, PATTERN_COUNT, rareColor, VISIBILITY_CAP, type DamascusData } from '../item/damascus.js';
 import { CATEGORY_INFO, createDraft, SEGMENTS } from '../item/factory.js';
 import { refreshDerived } from '../item/finalize.js';
-import type { Category, Item, StageQuality } from '../item/types.js';
+import { ITEM_VERSION, type Category, type Item, type StageQuality } from '../item/types.js';
 
 export const SHOWCASE_LIMITS = { bodyBytes: 24_000, name: 48, player: 20, workshop: 28, season: 12 };
 
@@ -60,6 +60,8 @@ export function sanitizeShowcaseItem(raw: unknown): SanitizeResult {
   const trad = typeof raw.tradition === 'string' && TRADITIONS.some((t) => t.id === raw.tradition) ? raw.tradition : 'foundry';
   const info = CATEGORY_INFO[category];
   const it = createDraft(category, trad, cleanText(raw.creator, SHOWCASE_LIMITS.player) || 'A smith', int(raw.createdDay, 1, 100000, 1), cleanText(raw.createdSeason, SHOWCASE_LIMITS.season) || 'Spring', seed);
+  // Keep the piece's version: unmarked or version-1 posts are legacy and render with the original renderer.
+  it.version = int(raw.version, 1, ITEM_VERSION, 1);
   it.id = cleanText(raw.id, 40) || it.id;
   it.createdAt = int(raw.createdAt, 0, 8.64e15, Date.now());
   it.name = cleanText(raw.name, SHOWCASE_LIMITS.name) || 'Unnamed Work';

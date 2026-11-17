@@ -12,7 +12,7 @@ import { displayCapacity, galleryCapacity } from '../../game/state';
 import { CATEGORY_INFO, displayName } from '../../item/factory';
 import { generateDescription, generateName, MUTATION_WORDS } from '../../item/describe';
 import { HEADLINE_STATS, STAT_LABELS } from '../../item/stats';
-import type { Item, ItemStats } from '../../item/types';
+import { isLegacy, type Item, type ItemStats } from '../../item/types';
 import { bladeLayout, renderItem, View } from '../../render/itemRenderer';
 import { toCanvas } from '../../render/pixel';
 import { btn, itemThumb, modal, spriteCanvas, statRow, tabs, toast } from '../dom';
@@ -74,9 +74,10 @@ export function openItem(app: App, item: Item, opts: OpenItemOpts = {}) {
     opts.byline ? el('p', { class: 'small muted' }, opts.byline) : null,
     el('div', { class: 'row', style: { margin: '6px 0' } },
       el('span', { class: 'tag gold' }, st.grade), el('span', { class: 'tag' }, st.rarityLabel), el('span', { class: 'tag', style: { background: tradition(item.tradition).color } }, tradition(item.tradition).name),
-      el('span', { class: 'tag cool' }, CATEGORY_INFO[item.category].name), el('span', { class: 'small muted' }, `◉ ${st.value} gold · by ${item.creator}, day ${item.createdDay} of ${item.createdSeason}`),
+      el('span', { class: 'tag cool' }, CATEGORY_INFO[item.category].name), isLegacy(item) ? el('span', { class: 'tag legacy', title: 'Made before the workshop\'s great renovation. Legacy pieces keep their original look forever.' }, 'Legacy') : null, el('span', { class: 'small muted' }, `◉ ${st.value} gold · by ${item.creator}, day ${item.createdDay} of ${item.createdSeason}`),
     ),
     el('p', {}, item.description ?? generateDescription(item)),
+    isLegacy(item) ? el('p', { class: 'small muted' }, 'A legacy piece, forged before the workshop\'s great renovation. It keeps its original look forever.') : null,
     damascusCard(item),
   ].filter((n): n is HTMLElement => !!n));
   if (item.sold) info.append(el('p', { class: 'muted' }, 'This piece was sold.'));

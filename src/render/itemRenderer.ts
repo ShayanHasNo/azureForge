@@ -14,6 +14,8 @@ import { EMBLEM_BITMAPS, engravingPaths, glyphFor } from '../item/patterns';
 import { damascusField, patternSpec, rareColor } from '../item/damascus';
 import type { Item } from '../item/types';
 import { PixelImage } from './pixel';
+import { isLegacy } from '../item/types';
+import { renderLegacy } from './legacy/rendererV1';
 
 export type View = 'front' | 'back' | 'profile';
 
@@ -104,7 +106,7 @@ const cache = new Map<string, PixelImage>();
 
 export function visualKey(item: Item, view: View): string {
   const v = {
-    c: item.category, s: item.seed, d: item.design, m: item.materials, st: item.structure, b: item.blade, sh: item.shield,
+    v: item.version ?? 1, c: item.category, s: item.seed, d: item.design, m: item.materials, st: item.structure, b: item.blade, sh: item.shield,
     h: item.hilt, su: item.surface, de: item.decoration, f: item.finish, bl: item.blemishes, mu: item.mutations, view,
   };
   return JSON.stringify(v);
@@ -114,7 +116,9 @@ export function renderItem(item: Item, view: View = 'front'): PixelImage {
   const key = visualKey(item, view);
   const hit = cache.get(key);
   if (hit) return hit;
-  const img = view === 'profile' ? renderProfile(item) : item.category === 'shield' ? renderShield(item, view) : renderBladed(item, view);
+  // Pieces made before the hi-res renderer keep their original pixels forever.
+  const img = isLegacy(item) ? renderLegacy(item, view)
+    : view === 'profile' ? renderProfile(item) : item.category === 'shield' ? renderShield(item, view) : renderBladed(item, view);
   if (cache.size > 300) cache.clear();
   cache.set(key, img);
   return img;

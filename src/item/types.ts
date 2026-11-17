@@ -5,7 +5,12 @@ import type { StageId } from '../data/traditions.js';
 import type { DamascusData } from './damascus.js';
 
 export type Category = 'sword' | 'dagger' | 'shield';
-export const ITEM_VERSION = 1;
+/**
+ * Item data version. Version 1 pieces were made before the hi-res renderer and
+ * are "legacy": they keep their original look forever (render/legacy).
+ */
+export const ITEM_VERSION = 2;
+export const isLegacy = (item: { version?: number }): boolean => (item.version ?? 1) < 2;
 
 export interface BladeGeometry {
   length: number; // blade length in sprite pixels

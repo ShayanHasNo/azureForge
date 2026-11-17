@@ -1,5 +1,6 @@
 // Small DOM helpers shared by all screens.
 
+import { isLegacy } from '../item/types';
 import { el } from '../core/util';
 import { displayName } from '../item/factory';
 import type { Item, ItemStats } from '../item/types';
@@ -111,7 +112,7 @@ export function itemThumb(item: Item, onClick?: () => void, extra?: Node): HTMLE
   const card = el('div', { class: `card thumb ${onClick ? 'click' : ''}`, tabindex: onClick ? '0' : undefined, role: onClick ? 'button' : undefined },
     c,
     el('div', { class: 'nm' }, (item.favorite ? '★ ' : '') + displayName(item)),
-    el('div', { class: 'small muted' }, `${item.stats?.grade ?? ''} · ${item.stats?.rarityLabel ?? ''}`),
+    el('div', { class: 'small muted' }, `${item.stats?.grade ?? ''} · ${item.stats?.rarityLabel ?? ''}`, isLegacy(item) ? el('span', { class: 'tag legacy', style: { marginLeft: '4px' } }, 'Legacy') : null),
     extra ?? null,
   );
   if (onClick) {
