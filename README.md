@@ -60,7 +60,7 @@ Every minigame supports mouse, touch and keyboard. Its controls are shown before
   - engraving by tracing
   - component assembly and stone setting
   - constellation infusion
-  - flaw inspection
+  - flaw inspection, with a loupe and a raking **inspection lamp**: about half of all flaws are too faint to see by eye, and only glint when the lamp's light comes from the right side
 - **6 crafting traditions**, each with its own stage sequence, minigame styles, materials and decorative language:
   - Traditional Foundry
   - Patternwrights

@@ -55,7 +55,8 @@ export interface UpgradeDef { id: string; name: string; cost: number; desc: stri
 export const UPGRADES: UpgradeDef[] = [
   { id: 'smallanvil', name: 'Horned Bench Anvil', cost: 40, desc: 'A small anvil for fine work.', effect: 'Unlocks daggers.' },
   { id: 'bellows', name: 'Leather Bellows', cost: 60, desc: 'Grandmother\'s bellows, re-stitched.', effect: 'Adds a bellows control to heat preparation (hold B / the bellows button for a gentle, steady push).' },
-  { id: 'loupe', name: 'Engraver\'s Loupe', cost: 70, desc: 'A brass loupe on a stand.', effect: 'Unlocks knotwork & feather engraving; shows a magnified guide while engraving.' },
+  { id: 'loupe', name: 'Engraver\'s Loupe', cost: 70, desc: 'A brass loupe on a stand.', effect: 'Unlocks knotwork & feather engraving; shows a magnified guide while engraving, and a stronger loupe at final inspection.' },
+  { id: 'lantern', name: 'Bullseye Lantern', cost: 85, desc: 'A lensed lantern that throws a wide, even beam.', effect: 'Final inspection: the lamp lights a wider area and is more forgiving about its angle.' },
   { id: 'wheel', name: 'Polishing Wheel', cost: 90, desc: 'A treadle-driven felt wheel.', effect: 'Unlocks the reflective texture; polishing gains a wheel mode with a steadier contact.' },
   { id: 'finebench', name: 'Fine Workbench', cost: 110, desc: 'A bench with vices and fine tools.', effect: 'Unlocks ring guards, wire wraps and a second gem slot.' },
   { id: 'gemsetter', name: 'Gem-setter\'s Kit', cost: 80, desc: 'Prongs, bezels and patience.', effect: 'Allows gems on the guard and blade as well as the pommel.' },

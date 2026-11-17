@@ -111,7 +111,7 @@ Saving stores this structure verbatim. The tests confirm that a JSON round-trip 
 | Assembly (hilt/inlay/rim) | Hilt, Mountain stone setting | positional and rotational alignment | guard/pommel offsets and tilt, stone placements, rim gap |
 | Engrave | Decoration | perpendicular deviation, smoothness, completion | per-sample jitter, slips, crispness |
 | Constellation | Celestial infusion | link precision and order | star points, brightness |
-| Inspect | Final finishing | flaws found, care | removes found blemishes |
+| Inspect | Final finishing | flaws found, care. Two tools: a loupe, and a raking lamp that makes flaws glint at the right light angle (blemishes carry a `depth`; faint ones are drawn at low contrast) | removes found blemishes |
 
 Difficulty runs from 0 (Relaxed) to 4 (Master). It comes from the tradition tier, the material's workability and the player's setting. Difficulty changes tolerances and complexity, such as extra zones, fold counts, ideal-heat shifts and rhythm styles, rather than only speed. The Experimental tradition adds quirks: mirrored, drifting, bursts, flicker or generous.
 

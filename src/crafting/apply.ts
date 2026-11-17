@@ -116,6 +116,11 @@ export function generateBlemishes(item: Item): Blemish[] {
   const n = Math.round(2 + weak(q.prep) * 3 + weak(q.shaping) * 3 + weak(q.structure) * 2 + weak(q.surface) * 3);
   const kinds: Blemish['kind'][] = ['pit', 'scratch', 'scale'];
   const out: Blemish[] = [];
-  for (let i = 0; i < Math.min(9, n); i++) out.push({ t: rng.range(0.06, 0.8), u: rng.range(-0.6, 0.6), kind: rng.pick(kinds) });
+  for (let i = 0; i < Math.min(9, n); i++) {
+    const b: Blemish = { t: rng.range(0.06, 0.8), u: rng.range(-0.6, 0.6), kind: rng.pick(kinds) };
+    // About half are faint: hard to see by eye, but they glint under the inspection lamp.
+    b.depth = rng.chance(0.5) ? Math.round(rng.range(0.08, 0.32) * 100) / 100 : Math.round(rng.range(0.6, 1) * 100) / 100;
+    out.push(b);
+  }
   return out;
 }

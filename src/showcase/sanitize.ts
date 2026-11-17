@@ -192,7 +192,7 @@ export function sanitizeShowcaseItem(raw: unknown): SanitizeResult {
   for (const k of QUALITY_KEYS) if (q[k] !== undefined) it.quality[k] = num(q[k], 0, 1, 0.5);
   it.blemishes = (Array.isArray(raw.blemishes) ? raw.blemishes.slice(0, 9) : [])
     .filter((b: any) => isObj(b) && BLEMISH_KINDS.includes(b.kind))
-    .map((b: any) => ({ t: num(b.t, 0, 1, 0.5), u: num(b.u, -1, 1, 0), kind: b.kind }));
+    .map((b: any) => ({ t: num(b.t, 0, 1, 0.5), u: num(b.u, -1, 1, 0), kind: b.kind, ...(b.depth !== undefined ? { depth: num(b.depth, 0, 1, 1) } : {}) }));
   it.mutations = (Array.isArray(raw.mutations) ? raw.mutations : []).filter((x: unknown) => typeof x === 'string' && MUTATIONS.includes(x)).slice(0, 4);
   it.history = [];
   refreshDerived(it);
