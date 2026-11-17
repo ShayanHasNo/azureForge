@@ -68,7 +68,7 @@ Every minigame supports mouse, touch and keyboard. Its controls are shown before
   - Mountain Artisans
   - Glassgarden
   - Experimental Workshop, which lets you reorder stages and adds quirks
-- **10 metals** (plus woods, leathers, gems and stones), each with real trade-offs. Material mastery unlocks creative options, never stat bonuses.
+- **14 metals** — now including steel, sunbronze, crucible steel and meteoric iron — plus bow woods, arrow shafts, horn, sinew and thread, feathers, cloth, hides, gems and stones. Each has real trade-offs. Material mastery unlocks creative options, never stat bonuses.
 - **Hi-res pixel art.** Sprites are drawn at twice the old resolution: same proportions, finer pixels, with crisp bevels, carved engraving and faceted gems. Pieces made before the change are **legacy** pieces: they keep their original look forever and carry a Legacy tag.
 - **Procedural sprites** built in 8 layers: silhouette, material shading, secondary details, 15 textures, hilt and wrap, decoration (your traced engraving, inscription, emblems, gems, stones, constellations), 16 finishes, and effects.
 - **Sword, dagger and shield** item categories, each with its own statistics.
@@ -76,7 +76,7 @@ Every minigame supports mouse, touch and keyboard. Its controls are shown before
 - **Market showcase.** Show any finished piece to other players from its inspection page, and browse everyone's pieces, newest or rarest, in *Village → Showcase*.
 - **A village** with nine villagers. Each has their own tastes and story, and reacts to the actual properties of what you show them. Villagers post open-ended requests ("something that reminds me of the mountains…").
 - **Predictable markets, exploration and journals.**
-  - Five market stalls keep fixed schedules.
+  - Seven market stalls keep fixed schedules, including Old Teodor's archery bench and Maren's mill loft.
   - Seven places to explore each list their reliable finds.
   - Historical journals and mastery challenges round out the world.
 - **A customizable workshop:** decor, little touches (yes, there's a cat), tools that add new mechanics, a display rack showing your real creations, and a collection room.

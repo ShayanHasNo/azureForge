@@ -170,7 +170,7 @@ export interface BladeLayout {
 }
 
 function pommelHeight(p: string, dagger: boolean) {
-  const base = { round: 7, disc: 5, faceted: 8, crescent: 6, wheel: 9, ring: 8, teardrop: 9, crown: 7, fishtail: 6, gearwheel: 9 }[p] ?? 7;
+  const base = { round: 7, disc: 5, faceted: 8, crescent: 6, wheel: 9, ring: 8, teardrop: 9, crown: 7, fishtail: 6, gearwheel: 9, scentstopper: 9 }[p] ?? 7;
   return dagger ? base - 1 : base;
 }
 
@@ -533,6 +533,32 @@ function drawSurfaceTexture(ctx: Ctx) {
           else if (noise2(seed, rx, ry) > 0.7) c.addTint(i, [255, 120, 50], 0.35 * strength);
           break;
         }
+        case 'watered': {
+          // crucible ("wootz") steel: fine contour lines that wander like water marks
+          const n = valueNoise(seed + 81, lx / 2.4, ly / 7) + 0.5 * valueNoise(seed + 82, lx / 1.1, ly / 3);
+          const f = Math.sin(n * 11 + ly * 0.22);
+          if (f > 0.5) s += 0.7 * strength; else if (f < -0.62) s -= 0.55 * strength;
+          break;
+        }
+        case 'widmanstatten': {
+          // meteoric iron: three families of crystal bands crossing at 60°
+          const fam = [ly, lx * 0.866 + ly * 0.5, -lx * 0.866 + ly * 0.5];
+          for (let n = 0; n < 3; n++) {
+            const a = fam[n] / 4.5, cell = Math.floor(a);
+            const along = n === 0 ? lx : n === 1 ? lx * 0.5 - ly * 0.866 : lx * 0.5 + ly * 0.866;
+            if (a - cell < 0.24 && valueNoise(seed + 90 + n, cell * 3.1, along / 7) > 0.42) { s += (0.75 - n * 0.2) * strength; break; }
+            if (a - cell > 0.86 && valueNoise(seed + 90 + n, cell * 3.1, along / 7) > 0.5) { s -= 0.5 * strength; break; }
+          }
+          break;
+        }
+        case 'rayed': {
+          // fine rays spreading from the guard (or the centre of a shield)
+          const oy = item.shield ? lh / 2 : lh * 0.76;
+          const ang = Math.atan2(lx - lw / 2, oy - ly);
+          const f = Math.sin(ang * 46);
+          if (f > 0.62) s += 0.75 * strength; else if (f < -0.8) s -= 0.4 * strength;
+          break;
+        }
         case 'nebula': {
           const n = valueNoise(seed + 41, lx / 6, ly / 8);
           c.addTint(i, n > 0.5 ? [180, 100, 220] : [80, 90, 220], Math.abs(n - 0.5) * 0.9 * strength);
@@ -729,6 +755,7 @@ function pommelInside(p: string, dx: number, dy: number, r: number): boolean {
     case 'teardrop': return dy >= 0 ? d <= r : Math.abs(dx) <= (r) * (1 + dy / (r * 1.8));
     case 'crown': return Math.abs(dx) <= r && dy >= -r * 0.5 && (dy <= r * 0.4 || (Math.abs(Math.round(dx)) % 3 === 0 && dy <= r + 0.5));
     case 'fishtail': return dy >= -r * 0.6 && Math.abs(dx) <= 1.5 + Math.max(0, dy) * 0.9 && !(dy > r * 0.2 && Math.abs(dx) < (dy - r * 0.2) * 0.8);
+    case 'scentstopper': return Math.abs(dy) <= r && Math.abs(dx) <= r * (0.42 + 0.5 * ((dy + r) / (2 * r))) + (dy > r * 0.72 ? -(dy - r * 0.72) * 0.9 : 0);
     case 'gearwheel': {
       const a = Math.atan2(dy, dx);
       const rr = r + (Math.cos(a * 8) > 0.3 ? 1.1 : 0);
@@ -1034,6 +1061,14 @@ function drawFinishShade(ctx: Ctx) {
     if (f === 'contrast' && L === L_BLADE && Math.abs(c.bu[i]) > 0.62) c.pal[i] = ctx.S;
     if (f === 'heirloom' && L === L_BLADE && Math.abs(c.bu[i]) > 0.8) c.shade[i] += 0.6;
     if (f === 'mirror' && (L === L_BLADE || L === L_FACE)) { c.shade[i] = 3 + (c.shade[i] - 3) * 1.6; if (mod((y / k) * 0.6 + x / k, 22) < 3) c.shade[i] = 5; }
+    if (f === 'satin') { c.shade[i] = 3 + (c.shade[i] - 3) * 0.72; if (noise2(seed + 63, Math.floor(x / (3 * k)), y) > 0.62) c.shade[i] += 0.22; }
+    if (f === 'sunlit' && c.shade[i] > 3.5) c.shade[i] += 0.45;
+    if (f === 'peacock' && L === L_BLADE) {
+      // temper colours run from straw at the spine to purple and blue at the edges
+      const e = Math.abs(c.bu[i]);
+      if (e > 0.74) c.addTint(i, [64, 70, 190], 0.5); else if (e > 0.5) c.addTint(i, [150, 70, 176], 0.4); else if (e > 0.28) c.addTint(i, [214, 150, 60], 0.3);
+    }
+    if (f === 'skyiron' && noise2(seed + 64, x, y) > 1 - 0.02 / k) { c.shade[i] = 5.4; c.addTint(i, [235, 240, 255], 0.8); }
     if (f === 'polished' && noise2(seed + 61, x, y) > 1 - 0.035 / k) c.shade[i] = 5.2;
     if (f === 'glossy' && noise2(seed + 62, x, y) > 1 - 0.015 / k) c.shade[i] = 5.3;
   }
@@ -1426,6 +1461,10 @@ function applyFinishColor(f: string, rgb: RGB, x: number, y: number, seed: numbe
       break;
     }
     case 'polished': l = clamp(l * 1.05); break;
+    case 'satin': s *= 0.9; l = 0.52 + (l - 0.52) * 0.86; break;
+    case 'sunlit': { const m = mixRgb(rgb, [255, 214, 120], 0.2); [h, s, l] = rgbToHsl(m); l = clamp(l * 1.05); break; }
+    case 'peacock': s = clamp(s * 1.15); break;
+    case 'skyiron': { const m = mixRgb(rgb, [58, 70, 112], 0.24); [h, s, l] = rgbToHsl(m); l *= 0.8; break; }
     case 'glow': { const m = mixRgb(rgb, ctx.glowRgb, 0.14); [h, s, l] = rgbToHsl(m); l = clamp(l * 1.06); break; }
     case 'frosted': { const m = mixRgb(rgb, [240, 248, 255], 0.2); [h, s, l] = rgbToHsl(m); l = 0.55 + (l - 0.55) * 0.7; if (noise2(seed + 3, x, y) > 1 - 0.07 / k) l = 0.92; break; }
     case 'rosegold': { const m = mixRgb(rgb, [232, 150, 140], 0.26); [h, s, l] = rgbToHsl(m); break; }

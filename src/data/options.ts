@@ -123,6 +123,7 @@ export const POMMELS: OptionDef[] = [
   o('crown', 'Crown', 'A pointed crown.', ['regal', 'ceremonial'], undefined, 0.08),
   o('fishtail', 'Fishtail', 'A split, flaring end.', ['ancient', 'wild']),
   o('gearwheel', 'Gearwheel', 'A toothed brass gear.', ['strange', 'ornate'], { mastery: { material: 'brass', level: 5 } }, 0.12),
+  o('scentstopper', 'Scent-stopper', 'A flared, faceted stopper — a swordsmith\'s pommel.', ['elegant', 'traditional'], { mastery: { material: 'steel', level: 5 } }, 0.06),
 ];
 
 export const WRAPS: OptionDef[] = [
@@ -186,6 +187,9 @@ export const TEXTURES: OptionDef[] = [
   o('tidal', 'Tidal', 'Concentric tide-rings.', ['lunar', 'river'], { mastery: { material: 'moonstone', level: 3 } }, 0.1),
   o('emberscale', 'Ember-scale', 'Glowing scale-like plates.', ['fiery', 'mountain'], { mastery: { material: 'dragonsteel', level: 1 } }, 0.12),
   o('nebula', 'Nebula', 'Clouds of violet starlight.', ['celestial', 'magical'], { mastery: { material: 'starmetal', level: 5 } }, 0.16),
+  o('watered', 'Watered steel', 'A fine watered grain, like ripples on still water.', ['ancient', 'pattern'], { mastery: { material: 'crucible', level: 1 } }, 0.14),
+  o('widmanstatten', 'Sky-crystal', 'Crossing crystal bands that only fallen iron can show.', ['celestial', 'ancient'], { mastery: { material: 'meteoric', level: 1 } }, 0.14),
+  o('rayed', 'Rayed', 'Fine rays spreading from the guard like sunlight.', ['sun', 'bright'], { mastery: { material: 'sunbronze', level: 5 } }, 0.1),
 ];
 
 // -------------------------------------------------------------- decoration
@@ -206,6 +210,7 @@ export const ENGRAVINGS: OptionDef[] = [
   o('lacework', 'Lacework', 'Silver-fine lace ovals.', ['ornate', 'ceremonial'], { mastery: { material: 'silver', level: 1 } }, 0.55),
   o('constellation', 'Constellation', 'Joined stars of a named sky.', ['celestial'], { mastery: { material: 'starmetal', level: 1 } }, 0.5),
   o('petal', 'Petals', 'Falling glassgarden petals.', ['nature', 'delicate'], { mastery: { material: 'gardenglass', level: 1 } }, 0.45),
+  o('arabesque', 'Arabesque', 'Interlaced scrolls with small spirals where they cross.', ['ornate', 'ancient'], { mastery: { material: 'crucible', level: 3 } }, 0.55),
 ];
 
 export const EMBLEMS: OptionDef[] = [
@@ -225,6 +230,9 @@ export const EMBLEMS: OptionDef[] = [
   o('crescent', 'Crescent', '', ['lunar'], { mastery: { material: 'moonstone', level: 1 } }),
   o('chalice', 'Chalice', '', ['ceremonial'], { mastery: { material: 'silver', level: 5 } }),
   o('comet', 'Comet', '', ['celestial'], { mastery: { material: 'starmetal', level: 3 } }),
+  o('anvil', 'Anvil', '', ['humble', 'traditional'], { mastery: { material: 'steel', level: 1 } }),
+  o('sunburst', 'Sunburst', '', ['sun', 'regal'], { mastery: { material: 'sunbronze', level: 3 } }),
+  o('meteor', 'Meteor', '', ['celestial', 'ancient'], { mastery: { material: 'meteoric', level: 3 } }),
 ];
 
 export const FINISHES: OptionDef[] = [
@@ -244,6 +252,10 @@ export const FINISHES: OptionDef[] = [
   o('moonlit', 'Moonlit', 'Faint silver light beneath the surface.', ['lunar', 'magical'], { mastery: { material: 'moonstone', level: 5 } }, 0.08),
   o('smoulder', 'Smoulder', 'Embers that never quite go out.', ['fiery', 'magical'], { mastery: { material: 'dragonsteel', level: 5 } }, 0.1),
   o('prism', 'Prism', 'Splits light into colour bands.', ['translucent', 'magical'], { mastery: { material: 'gardenglass', level: 5 } }, 0.1),
+  o('satin', 'Satin', 'A soft, even sheen with the faintest grain.', ['clean', 'practical'], { mastery: { material: 'steel', level: 3 } }),
+  o('sunlit', 'Sunlit', 'Warm gold light held in the metal.', ['sun', 'warm', 'bright'], { mastery: { material: 'sunbronze', level: 1 } }, 0.06),
+  o('peacock', 'Peacock temper', 'Temper colours: straw at the spine, purple and blue at the edges.', ['strange', 'ornate'], { mastery: { material: 'crucible', level: 5 } }, 0.1),
+  o('skyiron', 'Sky-iron', 'Dark as a night sky, pricked with points of light.', ['celestial', 'ancient'], { mastery: { material: 'meteoric', level: 5 } }, 0.08),
 ];
 
 // -------------------------------------------------------------- shields

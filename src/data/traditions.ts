@@ -27,7 +27,7 @@ export interface TraditionDef {
   quirks?: boolean;
 }
 
-const ALL_METALS = ['brass', 'copper', 'bronze', 'iron', 'silver', 'azuresteel', 'moonstone', 'dragonsteel', 'starmetal'];
+const ALL_METALS = ['brass', 'copper', 'bronze', 'iron', 'steel', 'silver', 'sunbronze', 'azuresteel', 'moonstone', 'crucible', 'dragonsteel', 'starmetal', 'meteoric'];
 
 export const TRADITIONS: TraditionDef[] = [
   {
@@ -53,7 +53,7 @@ export const TRADITIONS: TraditionDef[] = [
     blurb: 'Starlight, runes and gentle glow.',
     philosophy: 'Metal that remembers the sky. The Atelier adds a starlight infusion stage — tracing living constellations — and favours runes, glow and iridescence.',
     stages: ['design', 'materials', 'heat', 'hammer', 'grind', 'surface', 'hilt', 'engrave', 'infusion', 'finish', 'appraisal'],
-    primaries: ['silver', 'moonstone', 'starmetal', 'azuresteel', 'gardenglass', 'brass'], tier: 3, hammerStyle: 'melodic', grindMode: 'symmetric', surfaceMode: 'polish',
+    primaries: ['silver', 'moonstone', 'starmetal', 'meteoric', 'azuresteel', 'gardenglass', 'brass'], tier: 3, hammerStyle: 'melodic', grindMode: 'symmetric', surfaceMode: 'polish',
     favours: ['celestial', 'lunar', 'mystic', 'magical', 'starry'],
     unlock: { reputation: 30, friend: { npc: 'lyra', level: 3 }, hint: 'Befriend Lyra the astronomer, or earn 30 reputation.' },
   },

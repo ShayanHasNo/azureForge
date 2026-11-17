@@ -18,6 +18,7 @@ const MAT_WORDS: Record<string, string[]> = {
   brass: ['Brass', 'Gilt', 'Bell'], copper: ['Copper', 'Rose', 'Penny'], bronze: ['Bronze', 'Barrow', 'Elder'], iron: ['Iron', 'Anvil', 'Hearth'],
   silver: ['Silver', 'Pale', 'Chime'], azuresteel: ['Azure', 'River', 'Blue'], moonstone: ['Moon', 'Pearl', 'Mist'], dragonsteel: ['Dragon', 'Ember', 'Scale'],
   starmetal: ['Star', 'Sky', 'Fallen'], gardenglass: ['Glass', 'Leaf', 'Green'],
+  steel: ['Steel', 'Keen', 'True'], sunbronze: ['Sun', 'Gold', 'Noon'], crucible: ['Watered', 'Crucible', 'Mirror'], meteoric: ['Sky-iron', 'Fallen', 'Thunder'],
 };
 const SUFFIX = ['song', 'fang', 'warden', 'light', 'thorn', 'keeper', 'whisper', 'fall', 'mark', 'heart', 'call', 'ward', 'tide', 'bloom', 'brand'];
 const NOUNS: Record<string, string[]> = {
@@ -62,6 +63,7 @@ const TEXTURE_PHRASE: Record<string, string> = {
   smooth: 'a smooth surface', brushed: 'a fine brushed grain', hammered: 'proud hammer-marks', weathered: 'a weathered, wind-worn skin', reflective: 'a mirror-bright face',
   layered: 'folded, rippling layers', iridescent: 'an oil-sheen of rainbow colour', rippled: 'glassy ripples', stonefleck: 'a speckled stone-like skin', forgescale: 'proud forge-scale',
   flamebloom: 'rose-and-violet heat blooms', riverwave: 'blue river-wave lines', tidal: 'concentric tide-rings', emberscale: 'glowing ember-scales', nebula: 'clouds of violet starlight',
+  watered: 'a fine watered grain', widmanstatten: 'crossing sky-crystal bands', rayed: 'fine rays spreading from the guard',
 };
 
 function grip(item: Item) {

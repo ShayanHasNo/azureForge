@@ -6,7 +6,7 @@ import { modal } from '../dom';
 export function openInventory(app: App) {
   const s = app.state;
   const m = modal('Material Storage');
-  const groups: [string, string[]][] = [['Metals & crystal', ['metal', 'crystal']], ['Grips & woods', ['wood', 'leather', 'bone']], ['Gems', ['gem']], ['Stones', ['stone']]];
+  const groups: [string, string[]][] = [['Metals & crystal', ['metal', 'crystal']], ['Woods', ['wood']], ['Leather, bone & horn', ['leather', 'bone', 'horn']], ['Thread, cloth & feathers', ['fiber', 'cloth', 'feather']], ['Gems', ['gem']], ['Stones', ['stone']]];
   const total = Object.values(s.materials).reduce((a, b) => a + b, 0);
   m.body.append(el('p', { class: 'muted' }, `${total} units in storage. Materials are only ever used when you begin a piece — set a piece aside or abandon it and nothing is lost.`));
   for (const [title, kinds] of groups) {

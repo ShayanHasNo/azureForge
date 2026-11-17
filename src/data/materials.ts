@@ -4,7 +4,7 @@
 
 import { rampFrom } from '../core/util.js';
 
-export type MaterialKind = 'metal' | 'crystal' | 'wood' | 'leather' | 'bone' | 'gem' | 'stone';
+export type MaterialKind = 'metal' | 'crystal' | 'wood' | 'leather' | 'bone' | 'gem' | 'stone' | 'horn' | 'fiber' | 'cloth' | 'feather';
 
 export interface MaterialProps {
   hardness: number; // edge holding / scratch resistance
@@ -55,6 +55,9 @@ export interface MaterialDef {
 }
 
 export type OptionKind = 'profile' | 'tip' | 'guard' | 'pommel' | 'wrap' | 'texture' | 'finish' | 'engraving' | 'emblem' | 'shieldShape' | 'boss';
+
+/** True for the working metals and crystal that a blade, shield or plate can be made of. */
+export const isForgeable = (kind: MaterialKind) => kind === 'metal' || kind === 'crystal';
 
 const P = (h: number, t: number, f: number, d: number, w: number, dec: number, m: number, l: number): MaterialProps => ({
   hardness: h, toughness: t, flexibility: f, density: d, workability: w, decorative: dec, magic: m, luster: l,
@@ -201,6 +204,69 @@ export const METALS: MaterialDef[] = [
     ],
   },
   {
+    id: 'steel', name: 'Steel', kind: 'metal', rarity: 2, value: 9,
+    description: 'Iron taught patience: carburised, hardened and tempered. Holds an edge and springs back, but punishes a careless heat.',
+    source: 'Hollis stocks steel bar once you have a little reputation; Brannoc carries it too.',
+    palette: ['#16181c', '#33383f', '#565d66', '#838b95', '#b4bcc6', '#e8edf2'],
+    props: P(74, 78, 62, 64, 60, 50, 8, 60),
+    traits: ['cool', 'practical', 'steadfast', 'keen'],
+    prep: { ideal: 0.68, band: 0.12, cool: 0.11, volatility: 0.07 }, rhythm: 'steady',
+    pairsWith: ['iron', 'brass', 'bronze', 'crucible', 'oak'],
+    mastery: [
+      { level: 1, kind: 'emblem', id: 'anvil' },
+      { level: 3, kind: 'finish', id: 'satin' },
+      { level: 5, kind: 'pommel', id: 'scentstopper' },
+    ],
+  },
+  {
+    id: 'sunbronze', name: 'Sunbronze', kind: 'metal', rarity: 3, value: 20,
+    description: 'A warm alloy the river towns cast for bells and festival gear. It glows like late afternoon and loves decoration.',
+    source: 'The Seasonal Market in summer and autumn; Brannoc carries bell-metal for good friends.',
+    palette: ['#3a1e08', '#7a4514', '#b87624', '#e0a53c', '#f6cf6a', '#fff2b8'],
+    accent: '#ffcc66',
+    props: P(56, 60, 56, 74, 72, 86, 48, 92),
+    traits: ['warm', 'sun', 'regal', 'bright'],
+    prep: { ideal: 0.52, band: 0.13, cool: 0.11, volatility: 0.07 }, rhythm: 'swing',
+    pairsWith: ['brass', 'copper', 'amber', 'walnut', 'crucible'],
+    clashesWith: ['moonstone'],
+    mastery: [
+      { level: 1, kind: 'finish', id: 'sunlit' },
+      { level: 3, kind: 'emblem', id: 'sunburst' },
+      { level: 5, kind: 'texture', id: 'rayed' },
+    ],
+  },
+  {
+    id: 'crucible', name: 'Crucible Steel', kind: 'metal', rarity: 4, value: 30,
+    description: 'Steel melted whole in a sealed crucible, cooled for days. Glass-hard, with a watered grain — and utterly unforgiving at the forge.',
+    source: 'The Seasonal Market has a few ingots; the Ember Vents hide an old cake of it on every fourth visit.',
+    palette: ['#0e1014', '#272c36', '#474f5e', '#737e90', '#a9b4c4', '#e2e9f2'],
+    props: P(90, 68, 44, 66, 32, 80, 22, 78),
+    traits: ['keen', 'ancient', 'cool', 'storied'],
+    prep: { ideal: 0.6, band: 0.08, cool: 0.13, volatility: 0.12 }, rhythm: 'delicate',
+    pairsWith: ['steel', 'silver', 'sunbronze', 'ebony'],
+    mastery: [
+      { level: 1, kind: 'texture', id: 'watered' },
+      { level: 3, kind: 'engraving', id: 'arabesque' },
+      { level: 5, kind: 'finish', id: 'peacock' },
+    ],
+  },
+  {
+    id: 'meteoric', name: 'Meteoric Iron', kind: 'metal', rarity: 5, value: 33,
+    description: 'Iron that fell from the sky, heavy with nickel. Dense and stubborn, with a crystal pattern no forge can make.',
+    source: 'Starfall Ridge, on a lucky clear night; Lyra keeps a piece for her closest friends.',
+    palette: ['#141210', '#34302c', '#5a554e', '#857f76', '#b4ada2', '#e6e0d4'],
+    accent: '#b6c8ff',
+    props: P(68, 80, 44, 84, 38, 72, 78, 50),
+    traits: ['celestial', 'ancient', 'heavy', 'storied'],
+    prep: { ideal: 0.72, band: 0.09, cool: 0.12, volatility: 0.16 }, rhythm: 'heavy',
+    pairsWith: ['starmetal', 'iron', 'starshard', 'silver'],
+    mastery: [
+      { level: 1, kind: 'texture', id: 'widmanstatten' },
+      { level: 3, kind: 'emblem', id: 'meteor' },
+      { level: 5, kind: 'finish', id: 'skyiron' },
+    ],
+  },
+  {
     id: 'gardenglass', name: 'Gardenglass', kind: 'crystal', rarity: 3, value: 22,
     description: 'Living green crystal grown in the Glassgarden. Very hard and brilliantly clear, but brittle.',
     source: 'Wren grows it in the Glassgarden greenhouse; also found in the Whispering Woods hollow.',
@@ -258,9 +324,66 @@ export const STONES: MaterialDef[] = [
   { id: 'riverstone', name: 'Riverstone', kind: 'stone', rarity: 1, value: 1, description: 'Smooth river pebbles, grey-green and speckled.', source: 'Riverbank, always.', palette: rampFrom('#7a8476', 6, 0.6), traits: ['earthy', 'mountain', 'river'], props: P(60, 50, 0, 70, 70, 60, 10, 30) },
   { id: 'slate', name: 'Slate Chips', kind: 'stone', rarity: 1, value: 1, description: 'Dark layered slate from the quarry.', source: 'Old Quarry, always.', palette: rampFrom('#4a4e58', 6, 0.6), traits: ['earthy', 'mountain', 'dark'], props: P(55, 45, 0, 70, 70, 55, 10, 25) },
   { id: 'obsidian', name: 'Obsidian Flake', kind: 'stone', rarity: 2, value: 5, description: 'Volcanic glass, black with a rainbow sheen.', source: 'Ember Vents.', palette: rampFrom('#2a2430', 6, 0.7), traits: ['dark', 'mountain', 'fiery'], props: P(80, 30, 0, 50, 50, 80, 30, 90) },
+  { id: 'flint', name: 'Flint Nodule', kind: 'stone', rarity: 1, value: 2, description: 'Honey-grey flint that breaks to a razor edge. Knapped into arrowheads since before there were forges.', source: 'Old Quarry and the Riverbank.', palette: rampFrom('#8a8478', 6, 0.7), traits: ['earthy', 'ancient', 'keen'], props: P(86, 28, 0, 60, 46, 60, 12, 50) },
 ];
 
-export const ALL_MATERIALS: MaterialDef[] = [...METALS, ...GRIPS, ...GEMS, ...STONES];
+/** A simple organic material (wood, horn, fibre, cloth, feather, hide) built from a base colour. */
+const org = (id: string, name: string, kind: MaterialKind, base: string, d: Partial<MaterialProps>, value: number, desc: string, source: string, traits: string[], rarity: 1 | 2 | 3 | 4 = 1): MaterialDef => ({
+  id, name, kind, description: desc, source, palette: rampFrom(base, 6, 0.7), rarity, value, traits,
+  props: { hardness: 40, toughness: 50, flexibility: 50, density: 40, workability: 78, decorative: 50, magic: 8, luster: 30, ...d },
+});
+
+/**
+ * Bow woods. For a bow, `flexibility` is how far the wood bends and springs back, `toughness`
+ * how well the belly takes compression, and `density` how much mass the limbs carry.
+ */
+export const BOW_WOODS: MaterialDef[] = [
+  org('yew', 'Yew', 'wood', '#b06a3a', { flexibility: 86, toughness: 74, density: 46, workability: 70, decorative: 62 }, 7, 'Pale sapwood for the back, red heartwood for the belly — a natural spring. The longbow wood.', 'Whispering Woods, most visits; Old Teodor keeps seasoned staves.', ['nature', 'traditional', 'elegant'], 2),
+  org('osage', 'Osage Orange', 'wood', '#d89a1c', { flexibility: 80, toughness: 88, density: 62, workability: 56, hardness: 60 }, 9, 'Dense, golden and almost unbreakable. Follows one growth ring or not at all.', 'Old Teodor trades osage staves; the Seasonal Market in autumn.', ['warm', 'steadfast', 'golden'], 3),
+  org('ash', 'Ash', 'wood', '#d8c8a0', { flexibility: 66, toughness: 64, density: 48, workability: 84 }, 3, 'Straight-grained, pale and forgiving. A good first bow, and a fine spear haft.', 'Whispering Woods, always; Hollis stocks ash.', ['light', 'practical', 'traditional']),
+  org('elm', 'Elm', 'wood', '#a8845a', { flexibility: 70, toughness: 72, density: 50, workability: 72 }, 4, 'Interlocked grain that refuses to split. Makes a broad, honest flatbow.', 'Whispering Woods in spring and summer; Old Teodor.', ['earthy', 'rustic', 'steadfast']),
+  org('hickory', 'Hickory', 'wood', '#c9a878', { flexibility: 62, toughness: 90, density: 58, workability: 76 }, 4, 'Nearly impossible to break in tension. The best backing strip there is.', 'Hollis stocks hickory; Old Teodor.', ['earthy', 'practical', 'steadfast']),
+  org('bamboo', 'Bamboo', 'wood', '#c8c070', { flexibility: 88, toughness: 70, density: 34, workability: 66 }, 6, 'Light, springy cane from the river towns. Laminates beautifully.', 'The Seasonal Market in spring and summer; Wren grows a little for friends.', ['light', 'nature', 'swift'], 2),
+];
+
+/** Arrow shafts: straightness and spine come from the maker; weight and stiffness from the wood. */
+export const SHAFT_WOODS: MaterialDef[] = [
+  org('cedar', 'Cedar', 'wood', '#c08860', { flexibility: 58, toughness: 46, density: 30, workability: 90 }, 3, 'Light, fragrant and straight-grained. The classic arrow shaft.', 'Old Teodor always has cedar dowels.', ['light', 'traditional', 'warm']),
+  org('rivercane', 'River Cane', 'wood', '#bfae6a', { flexibility: 72, toughness: 60, density: 28, workability: 68 }, 2, 'Hollow cane with tough nodes. Needs heat and patience to straighten, then flies true.', 'The Riverbank and Moonlit Lake.', ['nature', 'river', 'light']),
+];
+
+export const HORNS: MaterialDef[] = [
+  org('oxhorn', 'Ox Horn', 'horn', '#d8c8a0', { hardness: 62, toughness: 78, flexibility: 60, density: 54, workability: 62, decorative: 66 }, 5, 'Pale horn, boiled flat. Takes compression better than any wood: the belly of a composite bow, and neat nock inserts.', 'Brannoc trades horn; Maren keeps a few at the mill.', ['pale', 'rustic', 'traditional'], 2),
+  org('buffalohorn', 'Water-Buffalo Horn', 'horn', '#2c2622', { hardness: 68, toughness: 86, flexibility: 64, density: 58, workability: 54, decorative: 74 }, 11, 'Long black plates of horn from the far south. The finest bow bellies are made of it.', 'Fennick, at the Seasonal Market.', ['dark', 'elegant', 'storied'], 3),
+];
+
+export const FIBERS: MaterialDef[] = [
+  org('sinew', 'Sinew', 'fiber', '#d8c0a0', { toughness: 92, flexibility: 84, density: 30, workability: 60 }, 4, 'Dried tendon, pounded to threads and laid in hide glue. Nothing is stronger in tension.', 'Brannoc trades sinew; Old Teodor.', ['rustic', 'traditional', 'steadfast']),
+  org('linenthread', 'Linen Thread', 'fiber', '#e6dcc0', { toughness: 70, flexibility: 40, density: 26, workability: 88 }, 2, 'Waxed flax thread. Strong, low-stretch bowstrings and neat stitching.', 'Maren always has linen thread.', ['pale', 'practical', 'traditional']),
+  org('hemp', 'Hemp Cord', 'fiber', '#b8a070', { toughness: 78, flexibility: 46, density: 34, workability: 80 }, 2, 'Coarse, tough cord. Heavier than linen, and it shrugs off the rain.', 'Maren; the Riverbank after rain.', ['earthy', 'rustic', 'practical']),
+  org('silk', 'Silk Thread', 'fiber', '#f0e0e8', { toughness: 84, flexibility: 70, density: 20, workability: 70, decorative: 86, luster: 80 }, 10, 'Light, lively and lustrous. A fast string, and the finest binding.', 'Fennick, at the Seasonal Market.', ['elegant', 'bright', 'light'], 3),
+];
+
+export const FEATHERS: MaterialDef[] = [
+  org('goose', 'Goose Feathers', 'feather', '#e8e6e0', { toughness: 62, density: 12, workability: 86 }, 2, 'Grey-white flight feathers: the fletcher\'s staple.', 'Moonlit Lake and the Riverbank; Old Teodor.', ['pale', 'traditional', 'practical']),
+  org('turkey', 'Turkey Feathers', 'feather', '#7a5a3a', { toughness: 74, density: 14, workability: 82, decorative: 60 }, 3, 'Stiff, barred brown feathers that keep their shape in the wet.', 'Whispering Woods in autumn; Old Teodor.', ['earthy', 'rustic', 'wild']),
+  org('pheasant', 'Pheasant Feathers', 'feather', '#b8742a', { toughness: 54, density: 12, workability: 78, decorative: 84 }, 5, 'Copper-barred and showy. More beautiful than durable.', 'Whispering Woods in autumn; the Seasonal Market.', ['warm', 'ornate', 'wild'], 2),
+  org('swan', 'Swan Feathers', 'feather', '#f8f8fa', { toughness: 70, density: 13, workability: 74, decorative: 90, luster: 60 }, 9, 'Broad, snow-white and silent. Kept for presentation arrows.', 'Moonlit Lake, some nights.', ['pale', 'elegant', 'lunar'], 3),
+];
+
+export const CLOTHS: MaterialDef[] = [
+  org('linen', 'Linen Cloth', 'cloth', '#e2d8bc', { toughness: 62, flexibility: 70, density: 30, workability: 88 }, 2, 'Plain-woven flax. Thirty layers of it will turn a blade.', 'Maren always has linen.', ['pale', 'practical', 'humble']),
+  org('wool', 'Wool Batting', 'cloth', '#d8d0c0', { toughness: 44, flexibility: 84, density: 22, workability: 90 }, 2, 'Carded fleece for stuffing quilted channels. Soft, springy, warm.', 'Maren; the Seasonal Market in winter.', ['warm', 'humble', 'rustic']),
+  org('canvas', 'Dyed Canvas', 'cloth', '#7a3a34', { toughness: 76, flexibility: 56, density: 40, workability: 80, decorative: 68 }, 4, 'Heavy cloth in deep madder red — the face of a brigandine.', 'Maren, at the mill loft.', ['warm', 'practical', 'regal'], 2),
+  org('velvet', 'Velvet', 'cloth', '#3a2a5a', { toughness: 50, flexibility: 66, density: 34, workability: 70, decorative: 92, luster: 64 }, 12, 'Deep-piled and rich. A lord\'s armour covering.', 'Fennick, at the Seasonal Market.', ['regal', 'elegant', 'ceremonial'], 3),
+];
+
+export const HIDES: MaterialDef[] = [
+  org('rawhide', 'Rawhide', 'leather', '#d8c8a8', { toughness: 80, flexibility: 50, density: 36, workability: 70 }, 2, 'Untanned hide that dries drum-tight. Backs a bow and laces lamellar.', 'Hollis and Brannoc both stock rawhide.', ['pale', 'rustic', 'practical']),
+  org('thickhide', 'Sole Leather', 'leather', '#8a5a34', { hardness: 52, toughness: 82, flexibility: 36, density: 48, workability: 66, decorative: 62 }, 5, 'Thick vegetable-tanned hide. Soaked, shaped and baked, it sets hard as horn.', 'Hollis stocks it once you have a little reputation; Brannoc.', ['warm', 'steadfast', 'rustic'], 2),
+];
+
+export const ALL_MATERIALS: MaterialDef[] = [...METALS, ...GRIPS, ...BOW_WOODS, ...SHAFT_WOODS, ...HORNS, ...FIBERS, ...FEATHERS, ...CLOTHS, ...HIDES, ...GEMS, ...STONES];
 const BY_ID = new Map(ALL_MATERIALS.map((m) => [m.id, m]));
 
 export function mat(id: string): MaterialDef {
