@@ -32,7 +32,7 @@ interface FloatText { text: string; x: number; y: number; life: number; color: s
 export abstract class BaseMinigame implements MinigameInstance {
   protected ctx: CanvasRenderingContext2D;
   protected t = 0;
-  protected pointer = { x: 0, y: 0, down: false, justDown: false, justUp: false, inside: false };
+  protected pointer = { x: 0, y: 0, down: false, justDown: false, justUp: false, inside: false, touch: false };
   protected keys = new Set<string>();
   protected pressed = new Set<string>();
   protected particles: Particle[] = [];
@@ -73,11 +73,12 @@ export abstract class BaseMinigame implements MinigameInstance {
     const down = (e: PointerEvent) => {
       toLocal(e);
       this.pointer.down = true; this.pointer.justDown = true;
+      this.pointer.touch = e.pointerType !== 'mouse';
       try { c.setPointerCapture(e.pointerId); } catch { /* ignore */ }
       this.onPointerDown();
       e.preventDefault();
     };
-    const move = (e: PointerEvent) => { toLocal(e); this.onPointerMove(); };
+    const move = (e: PointerEvent) => { this.pointer.touch = e.pointerType !== 'mouse'; toLocal(e); this.onPointerMove(); };
     const up = (e: PointerEvent) => { toLocal(e); if (this.pointer.down) { this.pointer.down = false; this.pointer.justUp = true; this.onPointerUp(); } };
     const kd = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement)?.tagName === 'INPUT' || (e.target as HTMLElement)?.tagName === 'TEXTAREA') return;
@@ -87,8 +88,14 @@ export abstract class BaseMinigame implements MinigameInstance {
       this.onKey(e.code, true);
     };
     const ku = (e: KeyboardEvent) => { this.keys.delete(e.code); this.onKey(e.code, false); };
+    // A cancelled touch (system gesture, palm, lost capture) must release like a lift, or holds would stick.
+    const cancel = (e: PointerEvent) => up(e);
+    const noMenu = (e: Event) => e.preventDefault(); // long-press must not open a context menu mid-hold
     c.addEventListener('pointerdown', down);
     c.addEventListener('pointermove', move);
+    c.addEventListener('lostpointercapture', cancel);
+    c.addEventListener('contextmenu', noMenu);
+    window.addEventListener('pointercancel', cancel);
     window.addEventListener('pointerup', up);
     window.addEventListener('keydown', kd);
     window.addEventListener('keyup', ku);
@@ -96,6 +103,9 @@ export abstract class BaseMinigame implements MinigameInstance {
     this.cleanup.push(() => {
       c.removeEventListener('pointerdown', down);
       c.removeEventListener('pointermove', move);
+      c.removeEventListener('lostpointercapture', cancel);
+      c.removeEventListener('contextmenu', noMenu);
+      window.removeEventListener('pointercancel', cancel);
       window.removeEventListener('pointerup', up);
       window.removeEventListener('keydown', kd);
       window.removeEventListener('keyup', ku);
@@ -275,6 +285,25 @@ export abstract class BaseMinigame implements MinigameInstance {
     ctx.fillRect(x, y, w, h);
     ctx.fillStyle = color;
     ctx.fillRect(x, y, Math.round(w * clamp(v)), h);
+  }
+  /**
+   * How far (in logical pixels) a press may wander and still count as a tap. A finger is far
+   * less steady than a mouse, and on a small screen one logical pixel is under one CSS pixel,
+   * so on touch this is measured in CSS pixels.
+   */
+  protected tapSlop(mouse = 4, touchCssPx = 12): number {
+    if (!this.pointer.touch) return mouse;
+    const w = this.env.canvas.getBoundingClientRect().width || MW;
+    return Math.max(mouse, (touchCssPx * MW) / w);
+  }
+  /** Is (x, y) on an on-canvas button? Fingers get a margin around it, since the canvas is small on a phone. */
+  protected hits(r: { x: number; y: number; w: number; h: number }, x: number, y: number): boolean {
+    const pad = this.pointer.touch ? 8 : 0;
+    return x >= r.x - pad && x <= r.x + r.w + pad && y >= r.y - pad && y <= r.y + r.h + pad;
+  }
+  /** True when the player is using a finger rather than a mouse. */
+  protected get touchInput(): boolean {
+    return this.pointer.touch;
   }
   /** Draw a canvas whose pixels are `per` to one logical sprite pixel (e.g. a tinted copy of a hi-res twin). */
   protected drawScaled(img: HTMLCanvasElement, x: number, y: number, scale: number, quarterTurns = 0, per = 1) {

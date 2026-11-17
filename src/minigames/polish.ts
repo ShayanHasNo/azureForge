@@ -228,8 +228,7 @@ class Polish extends BaseMinigame {
   private doneRect() { return { x: MW - 96, y: MH - 40, w: 84, h: 20 }; }
   private overDone(): boolean {
     const [x, y] = this.uiPointer();
-    const r = this.doneRect();
-    return x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
+    return this.hits(this.doneRect(), x, y);
   }
   private zoneAtSprite(x: number, y: number): number {
     const ix = Math.round(x), iy = Math.round(y);

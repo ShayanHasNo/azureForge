@@ -346,7 +346,7 @@ class Fold extends BaseMinigame {
   protected onPointerUp() {
     if (this.phase === 'align' && this.drag.active) {
       this.drag.active = false;
-      if (this.drag.moved < 3 && this.t - this.drag.t0 < 0.45) this.confirmAlign();
+      if (this.drag.moved < this.tapSlop(3, 9) && this.t - this.drag.t0 < 0.6) this.confirmAlign();
     }
   }
 

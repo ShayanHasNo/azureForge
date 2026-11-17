@@ -3,7 +3,7 @@
 
 import type { App } from '../../app';
 import { audio } from '../../audio/audio';
-import { el } from '../../core/util';
+import { el, isTouch } from '../../core/util';
 import { CraftSession } from '../../crafting/session';
 import { Control, StageCtx } from '../../crafting/stages';
 import { compatibility, hasMat, mat, masteryLevel } from '../../data/materials';
@@ -88,7 +88,16 @@ export function openCrafting(app: App, session: CraftSession | null) {
     const r = stageArea.getBoundingClientRect();
     showcase.setBox(Math.max(160, Math.floor(r.width)), Math.max(160, Math.floor(r.height)));
   };
-  const ro = new ResizeObserver(fitShowcase);
+  /** Size the minigame canvas to the largest 16:9 box the stage really has (not the window). */
+  const fitMinigame = () => {
+    const c = stageArea.querySelector('canvas.mg') as HTMLCanvasElement | null;
+    if (!c) return;
+    const r = stageArea.getBoundingClientRect();
+    const w = Math.max(160, Math.floor(Math.min(r.width - 6, (r.height - 6) * (16 / 9))));
+    c.style.width = `${w}px`;
+    c.style.height = `${Math.round((w * 9) / 16)}px`;
+  };
+  const ro = new ResizeObserver(() => { fitShowcase(); fitMinigame(); });
   ro.observe(stageArea);
   let mg: MinigameInstance | null = null;
   let baseline: ItemStats = computeStats(ses.item);
@@ -236,6 +245,7 @@ export function openCrafting(app: App, session: CraftSession | null) {
       el('div', { class: 'panel-body' },
         ...lines.map((l) => el('p', {}, l)),
         el('p', { class: 'small muted' }, `Controls: ${def.controls}`),
+        isTouch() && window.innerHeight > window.innerWidth ? el('p', { class: 'small muted' }, 'Tip: turn your phone sideways for a bigger view of the work.') : null,
         el('p', {}, el('span', { class: 'tag gold' }, `Difficulty: ${difficultyName(difficulty)}`), ' ', hasMat(ses.item.materials.primary) ? el('span', { class: 'tag' }, mat(ses.item.materials.primary).name) : null, quirk ? el('span', { class: 'tag cool' }, `Quirk: ${QUIRKS[quirk]}`) : null),
         s.settings.difficulty !== 'relaxed' ? el('p', { class: 'small muted' }, 'Prefer something gentler? Relaxed crafting mode is in Settings — it keeps every mechanic but widens all tolerances.') : null,
       ),
@@ -269,8 +279,11 @@ export function openCrafting(app: App, session: CraftSession | null) {
     stageArea.innerHTML = '';
     const canvas = el('canvas', { class: 'mg', tabindex: '0', 'aria-label': `${def.name} minigame` });
     stageArea.append(canvas);
+    root.classList.add('playing'); // small screens give the minigame the whole screen
+    fitMinigame();
+    requestAnimationFrame(fitMinigame);
     const status = el('p', { class: 'small' }, 'Working…');
-    side.querySelector('.panel-body')?.prepend(el('div', { class: 'card' }, el('b', {}, def.name), status, el('p', { class: 'small muted' }, def.controls)));
+    side.querySelector('.panel-body')?.prepend(el('div', { class: 'card mg-status' }, el('b', {}, def.name), status, el('p', { class: 'small muted' }, def.controls)));
     canvas.focus();
     side.querySelectorAll('input, select, textarea, button').forEach((n) => ((n as HTMLInputElement).disabled = true));
     const inst = def.create({ ...env, canvas, onStatus: (t) => (status.textContent = t) });
@@ -279,6 +292,7 @@ export function openCrafting(app: App, session: CraftSession | null) {
     inst.start().then((res) => {
       inst.destroy();
       mg = null;
+      root.classList.remove('playing');
       (audio as any).stopAllLoops?.();
       ses.applyResult(res, env.difficulty);
       ses.persist();

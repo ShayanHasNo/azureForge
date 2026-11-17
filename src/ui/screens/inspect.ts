@@ -36,7 +36,7 @@ export interface OpenItemOpts {
 export function openItem(app: App, item: Item, opts: OpenItemOpts = {}) {
   const s = app.state;
   const st = item.stats!;
-  const m = modal(opts.fresh ? 'Inspection & Appraisal' : displayName(item), { onClose: () => { sc.destroy(); opts.onChange?.(); } });
+  const m = modal(opts.fresh ? 'Inspection & Appraisal' : displayName(item), { onClose: () => { sc.destroy(); fitRo.disconnect(); opts.onChange?.(); } });
   const owned = !opts.readOnly && !item.sold && !item.giftedTo;
   const wrap = el('div', { class: 'inspect' });
   const show = el('div', { class: 'showcase' });
@@ -93,8 +93,17 @@ export function openItem(app: App, item: Item, opts: OpenItemOpts = {}) {
   info.append(tabHost);
   wrap.append(show, info);
   m.body.append(wrap);
-  const fit = () => { const r = show.getBoundingClientRect(); sc.setBox(Math.max(200, Math.floor(r.width)), Math.max(300, Math.min(Math.floor(r.height), window.innerHeight - 240))); };
+  let lastBox = '';
+  const fit = () => {
+    const r = show.getBoundingClientRect();
+    const w = Math.max(160, Math.floor(r.width)), h = Math.max(160, Math.floor(r.height));
+    if (`${w}x${h}` === lastBox) return;
+    lastBox = `${w}x${h}`;
+    sc.setBox(w, h);
+  };
   requestAnimationFrame(fit);
+  const fitRo = new ResizeObserver(fit);
+  fitRo.observe(show);
 
   if (owned) {
     const favBtn = btn(item.favorite ? '★ Favourite' : '☆ Favourite', () => { item.favorite = !item.favorite; favBtn.textContent = item.favorite ? '★ Favourite' : '☆ Favourite'; app.save(); }, 'ghost');

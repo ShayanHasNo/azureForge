@@ -87,7 +87,7 @@ class Inspect extends BaseMinigame {
   private loupe: V = [MW / 2, MH / 2];
   private lastP: V = [0, 0];
   private kbHold = 0;
-  private press: { at: V; pan: V; moved: number } | null = null;
+  private press: { at: V; pan: V; moved: number; toolAt: V } | null = null;
   private centres: V[] = [];
   private visible: boolean[] = [];
   private found = new Set<number>();
@@ -178,6 +178,9 @@ class Inspect extends BaseMinigame {
       const r = this.toolRect(t);
       if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) return t;
     }
+    for (const t of ['loupe', 'lamp'] as const) {
+      if (this.hits(this.toolRect(t), x, y) && !this.overFinish()) return t;
+    }
     return null;
   }
   private overDial() {
@@ -215,8 +218,7 @@ class Inspect extends BaseMinigame {
   private finishRect() { return { x: MW - 132, y: MH - 40, w: 120, h: 20 }; }
   private overFinish() {
     const [x, y] = this.uiPointer();
-    const r = this.finishRect();
-    return x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
+    return this.hits(this.finishRect(), x, y);
   }
 
   private applyView() {
@@ -257,6 +259,7 @@ class Inspect extends BaseMinigame {
     }
 
     const p: V = [this.pointer.x, this.pointer.y];
+    const toolWas: V = [this.loupe[0], this.loupe[1]];
     const moved = p[0] !== this.lastP[0] || p[1] !== this.lastP[1];
     this.lastP = p;
     // keyboard loupe
@@ -269,19 +272,21 @@ class Inspect extends BaseMinigame {
     } else this.kbHold = 0;
     if (moved) this.loupe = [p[0], p[1]];
     // drag to pan / click to mark
-    if (this.pointer.justDown && !this.overFinish()) this.press = { at: p, pan: [...this.pan] as V, moved: 0 };
+    if (this.pointer.justDown && !this.overFinish()) this.press = { at: p, pan: [...this.pan] as V, moved: 0, toolAt: toolWas };
     if (this.press && this.pointer.down) {
       const dx = p[0] - this.press.at[0], dy = p[1] - this.press.at[1];
       this.press.moved = Math.max(this.press.moved, Math.hypot(dx, dy));
-      if (this.press.moved > 6) this.pan = [clamp(this.press.pan[0] + dx, -this.panMax[0], this.panMax[0]), clamp(this.press.pan[1] + dy, -this.panMax[1], this.panMax[1])];
+      if (this.press.moved > this.tapSlop(6, 12)) this.pan = [clamp(this.press.pan[0] + dx, -this.panMax[0], this.panMax[0]), clamp(this.press.pan[1] + dy, -this.panMax[1], this.panMax[1])];
     }
     if (this.press && this.pointer.justUp) {
-      if (this.press.moved <= 6) this.mark(p);
+      // With a finger, the first tap brings the tool over; a tap inside the tool polishes. (A mouse hovers first, so it marks at once.)
+      const placing = this.touchInput && Math.hypot(p[0] - this.press.toolAt[0], p[1] - this.press.toolAt[1]) > (this.tool === 'lamp' ? this.lampR : LOUPE_R) * 0.85;
+      if (this.press.moved <= this.tapSlop(6, 12) && !placing) this.mark(p);
       this.press = null;
     }
     if (this.wasPressed('Space')) this.mark(this.loupe);
-    // edge auto-scroll (not while dragging)
-    if (!this.press) {
+    // edge auto-scroll (not while dragging; mouse only — a finger has no hover, so it would keep sliding)
+    if (!this.press && !this.touchInput) {
       const e = 34, sp = 110 * dt;
       const lx = this.loupe[0], ly = this.loupe[1];
       if (lx < e) this.pan[0] = Math.min(this.panMax[0], this.pan[0] + sp);
@@ -508,8 +513,8 @@ class Inspect extends BaseMinigame {
   protected drawOverlay(ctx: CanvasRenderingContext2D) {
     this.text('Final inspection', MW / 2, 12, { size: 10, align: 'center', color: COLORS.gold });
     this.text(this.tool === 'lamp'
-      ? 'Lamp: sweep the low light over the piece • turn it with Q/E, the wheel or the dial • click a glint to polish it'
-      : 'Look closely for pits, scratches and scale • click / Space to polish one • drag or edges to pan', MW / 2, 26, { size: 8, align: 'center', color: COLORS.paper });
+      ? (this.touchInput ? 'Lamp: tap to move the light • turn it with the dial • tap a glint inside it to polish • drag to pan' : 'Lamp: sweep the low light over the piece • turn it with Q/E, the wheel or the dial • click a glint to polish it')
+      : (this.touchInput ? 'Tap to move the loupe • tap a flaw inside it to polish • drag to pan' : 'Look closely for pits, scratches and scale • click / Space to polish one • drag or edges to pan'), MW / 2, 26, { size: 8, align: 'center', color: COLORS.paper });
     this.text(this.statusText(), 12, MH - 14, { size: 10, color: COLORS.paper });
     this.text(`Care ${Math.round(this.care * 100)}%`, 170, MH - 14, { size: 10, color: this.care > 0.85 ? COLORS.paper : COLORS.ok });
     if (this.finished) return;

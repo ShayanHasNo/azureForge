@@ -81,6 +81,7 @@ Every minigame supports mouse, touch and keyboard. Its controls are shown before
   - Historical journals and mastery challenges round out the world.
 - **A customizable workshop:** decor, little touches (yes, there's a cat), tools that add new mechanics, a display rack showing your real creations, and a collection room.
 - **Synthesized audio.** Generative ambient music, fire, rain, wind and village ambience, plus crafting sounds. Music, ambience and crafting sounds each have their own volume.
+- **Phone-friendly.** Plays in portrait or landscape with touch alone: a thumb-reach bottom menu, full-screen panels, finger-sized buttons, a workshop camera that follows the smith on tall screens, and minigames that get the whole screen while you work. It can be added to the home screen.
 - **Accessibility:** a Relaxed crafting mode, a readable text font (Atkinson Hyperlegible, or switch back to the classic pixel font), reduced motion, high-contrast panels, interface scaling and keyboard play.
 - **Saving.** The game autosaves after every stage, keeps a rolling backup, and supports JSON export/import. An unfinished piece is saved and can be resumed.
 
@@ -113,6 +114,12 @@ For a full browser playthrough with screenshots:
 
 ```bash
 npm run e2e
+```
+
+For a touch-only playthrough on emulated phones (portrait, landscape and a small Android), which also checks that buttons are on screen and finger-sized:
+
+```bash
+npm run e2e:mobile
 ```
 
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the architecture, data model and design specifications, and [`docs/CHECKLIST.md`](docs/CHECKLIST.md) for the feature checklist.

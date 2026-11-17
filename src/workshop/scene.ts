@@ -6,7 +6,7 @@
 // life and the smith are drawn per frame.
 
 import { noise2, valueNoise } from '../core/rng';
-import { clamp, hexToRgb, mixHex } from '../core/util';
+import { clamp, hexToRgb, mixHex, isTouch } from '../core/util';
 import type { Item } from '../item/types';
 import { BgInput, bgKey, BgResult, buildBackground } from './background';
 import { ANVIL_BASE_Y, CEIL, FLOOR_Y, H, STATION_LABELS, StationDef, StationId, W, WALK_X0, WALK_X1, WALK_Y0, WALK_Y1, windowGeo } from './layout';
@@ -78,6 +78,9 @@ export class WorkshopScene {
   private scale = 1;
   private ox = 0;
   private oy = 0;
+  /** Left edge of the visible part of the room, in scene pixels (tall screens zoom in and follow the smith). */
+  private camX = -1;
+  private touch = isTouch();
   private sizeDirty = true;
 
   // the smith
@@ -215,9 +218,11 @@ export class WorkshopScene {
   private hitStation(x: number, y: number): StationDef | null {
     if (!this.bg) return null;
     let best: StationDef | null = null, area = 1e9;
+    // fingers get a little slack around each station
+    const pad = this.touch ? 4 : 0;
     for (const s of this.bg.stations) {
       const h = s.hit;
-      if (x >= h.x && x < h.x + h.w && y >= h.y && y < h.y + h.h) {
+      if (x >= h.x - pad && x < h.x + h.w + pad && y >= h.y - pad && y < h.y + h.h + pad) {
         const a = h.w * h.h;
         if (a < area) { area = a; best = s; }
       }
@@ -238,6 +243,7 @@ export class WorkshopScene {
   private onPointerDown = (e: PointerEvent) => {
     if (!this.inputOn || !this.running) return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
+    this.touch = e.pointerType !== 'mouse';
     const [x, y] = this.toInternal(e);
     if (x < 0 || y < 0 || x >= W || y >= H) return;
     e.preventDefault();
@@ -922,7 +928,8 @@ export class WorkshopScene {
   private drawHighlights(c: C2D) {
     const bg = this.bg!;
     const show: { id: StationId; key: boolean }[] = [];
-    if (this.inputOn && this.near) show.push({ id: this.near, key: true });
+    // the "E" key badge only makes sense with a keyboard
+    if (this.inputOn && this.near) show.push({ id: this.near, key: !this.touch });
     if (this.inputOn && this.hover && this.hover !== this.near) show.push({ id: this.hover, key: false });
     const pulse = 0.55 + 0.3 * Math.sin(this.t * 4);
     for (const s of show) {
@@ -1014,19 +1021,34 @@ export class WorkshopScene {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = LETTERBOX;
     ctx.fillRect(0, 0, cw, ch);
-    let s = Math.min(cw / W, ch / H);
+    const fit = Math.min(cw / W, ch / H);
+    let s = fit;
+    // On a tall (portrait) screen, fitting the whole room would leave it a thin strip. Zoom in until
+    // about MIN_VIEW scene pixels are across (or the room fills the height) and follow the smith.
+    if (cw / ch < 1.25) s = Math.max(fit, Math.min(ch / H, cw / MIN_VIEW));
     if (s >= 1) {
       const si = Math.floor(s);
       if (si / s >= 0.85) s = si;
     }
     this.scale = s;
-    this.ox = Math.floor((cw - W * s) / 2);
+    const viewW = cw / s;
+    if (viewW < W - 0.5) {
+      const want = clamp(this.px - viewW / 2, 0, W - viewW);
+      this.camX = this.camX < 0 ? want : this.camX + (want - this.camX) * 0.12;
+      if (Math.abs(want - this.camX) < 0.05) this.camX = want;
+      this.ox = -Math.round(this.camX * s);
+    } else {
+      this.camX = -1;
+      this.ox = Math.floor((cw - W * s) / 2);
+    }
     this.oy = Math.floor((ch - H * s) / 2);
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(this.off, 0, 0, W, H, this.ox, this.oy, Math.round(W * s), Math.round(H * s));
   }
 }
 
+/** Scene pixels kept in view across a tall screen. */
+const MIN_VIEW = 150;
 const WOODC = '#7a5034';
 // Ember the forge cat, curled up asleep (facing left).
 const CAT = [

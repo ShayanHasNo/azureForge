@@ -340,7 +340,9 @@ class Assembly extends BaseMinigame {
   }
   private btnAt(): Btn | null {
     const [x, y] = this.uiPointer();
+    // exact hit first, so the padded touch margins of neighbouring buttons never steal a press
     for (const b of this.buttons()) if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) return b;
+    for (const b of this.buttons()) if (this.hits(b, x, y)) return b;
     return null;
   }
 

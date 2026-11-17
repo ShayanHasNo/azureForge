@@ -211,7 +211,7 @@ class Grind extends BaseMinigame {
   protected onPointerDown() {
     if (this.finished) return;
     const p = this.pointer;
-    if (p.x >= DONE.x && p.x <= DONE.x + DONE.w && p.y >= DONE.y && p.y <= DONE.y + DONE.h) {
+    if (this.hits(DONE, p.x, p.y)) {
       this.done();
       return;
     }

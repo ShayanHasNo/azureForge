@@ -2,7 +2,7 @@
 // workshop scene, and routes between screens.
 
 import { audio } from './audio/audio';
-import { el } from './core/util';
+import { el, isTouch } from './core/util';
 import { tradition } from './data/traditions';
 import { saveGame } from './game/save';
 import { dateLabel, displayCapacity, GameState, phaseName, seasonOf, weatherOf } from './game/state';
@@ -17,6 +17,15 @@ import { openVillage } from './ui/screens/village';
 import { openCustomize } from './ui/screens/customize';
 import { openSettings } from './ui/screens/settings';
 import { palette } from './data/options';
+
+/** A menu button: icon + label. Desktop shows the label (the cog shows only its icon); the phone layout stacks icon over label. */
+function nav(icon: string, label: string, onClick: () => void, cls: string, attrs: Record<string, any>, iconOnly = false, short = label): HTMLButtonElement {
+  const b = btn('', onClick, cls, { 'aria-label': label, ...attrs });
+  // `short` is the label used in the narrow phone menu
+  b.append(el('span', { class: 'ico', 'aria-hidden': 'true' }, icon), el('span', { class: 'lbl', 'data-short': short }, label));
+  if (iconOnly) b.classList.add('icon-only');
+  return b;
+}
 
 export class App {
   root: HTMLElement;
@@ -35,7 +44,7 @@ export class App {
   // ---------------------------------------------------------------- lifecycle
   mountWorkshop() {
     this.root.querySelectorAll('.scene, .hud, .bottombar').forEach((n) => n.remove());
-    const canvas = el('canvas', { class: 'scene', 'aria-label': 'Your workshop. Use A/D or arrows to walk, E to interact, or click a station.' });
+    const canvas = el('canvas', { class: 'scene', 'aria-label': 'Your workshop. Tap or click a station to walk to it and use it, or use A/D or the arrow keys to walk and E to interact.' });
     this.hud = el('div', { class: 'hud' });
     this.bottom = el('div', { class: 'bottombar' });
     this.root.append(canvas, this.hud, this.bottom);
@@ -109,18 +118,18 @@ export class App {
       el('div', { class: 'chip', title: 'Reputation' }, '✦ ', el('b', {}, String(s.reputation))),
       el('div', { class: 'spacer' }),
       el('div', { class: 'menu' },
-        btn('Craft', () => this.interact('forge'), 'primary', { title: 'Begin a new piece (F)' }),
-        btn('Materials', () => openInventory(this), '', { title: 'Inventory (I)' }),
-        btn('Journal', () => openJournal(this), '', { title: 'Journal (J)' }),
-        btn('Collection', () => openCollection(this), '', { title: 'Collection (C)' }),
-        btn('Village', () => openVillage(this), '', { title: 'Village (V)' }),
-        btn('Workshop', () => openCustomize(this), '', { title: 'Customise & upgrade (U)' }),
-        btn('Rest', () => this.rest(), 'ghost', { title: 'Sleep until morning (R)' }),
-        btn('⚙', () => openSettings(this), 'ghost iconbtn', { title: 'Settings (Esc)', 'aria-label': 'Settings' }),
+        nav('⚒', 'Craft', () => this.interact('forge'), 'primary', { title: 'Begin a new piece (F)' }),
+        nav('◆', 'Materials', () => openInventory(this), '', { title: 'Inventory (I)' }, false, 'Stock'),
+        nav('✎', 'Journal', () => openJournal(this), '', { title: 'Journal (J)' }),
+        nav('▦', 'Collection', () => openCollection(this), '', { title: 'Collection (C)' }, false, 'Pieces'),
+        nav('⌂', 'Village', () => openVillage(this), '', { title: 'Village (V)' }),
+        nav('✚', 'Workshop', () => openCustomize(this), '', { title: 'Customise & upgrade (U)' }, false, 'Upgrade'),
+        nav('☾', 'Rest', () => this.rest(), 'ghost', { title: 'Sleep until morning (R)' }),
+        nav('⚙', 'Settings', () => openSettings(this), 'ghost iconbtn', { title: 'Settings (Esc)', 'aria-label': 'Settings' }, true),
       ),
     );
     const last = s.log[0]?.text ?? '';
-    this.bottom.textContent = last ? `“${last}”` : 'Walk with A/D or ←/→ · E to use a station · or click anything.';
+    this.bottom.textContent = last ? `“${last}”` : isTouch() ? 'Tap anywhere to walk · tap a station to use it.' : 'Walk with A/D or ←/→ · E to use a station · or click anything.';
   }
 
   refresh() {

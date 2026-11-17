@@ -1,7 +1,7 @@
 // Small DOM helpers shared by all screens.
 
 import { isLegacy } from '../item/types';
-import { el } from '../core/util';
+import { el, isTouch } from '../core/util';
 import { displayName } from '../item/factory';
 import type { Item, ItemStats } from '../item/types';
 import { renderItem, View } from '../render/itemRenderer';
@@ -51,7 +51,8 @@ export function modal(title: string, opts: { cls?: string; onClose?: () => void;
   app.append(overlay);
   const observer = new MutationObserver(() => { if (foot.childElementCount) foot.classList.remove('hidden'); });
   observer.observe(foot, { childList: true });
-  setTimeout(() => (panel.querySelector('button, input, [tabindex]') as HTMLElement | null)?.focus(), 30);
+  // Focus the first control for keyboard users; on touch, skip text fields so the on-screen keyboard does not pop up.
+  setTimeout(() => (panel.querySelector(isTouch() ? 'button, [tabindex]' : 'button, input, [tabindex]') as HTMLElement | null)?.focus({ preventScroll: true }), 30);
   return { overlay, panel, head, body, foot, close, setTitle: (t) => (h2.textContent = t) };
 }
 
