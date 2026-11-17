@@ -92,6 +92,15 @@ try {
       const mg = page.locator('canvas.mg');
       if (await mg.count()) {
         if (shots < 12 && Math.random() < 0.08) await shot(`${tag}-mg-${shots++}`);
+        // Linking stars takes aimed input: nudge the keyboard cursor, then try the link. (A link
+        // that keeps missing is granted after a few tries, so this always gets through.)
+        if ((await page.locator('.mg-status b').first().textContent({ timeout: 500 }).catch(() => '')) === 'Starlight Infusion') {
+          const key = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'][Math.floor(Math.random() * 4)];
+          await page.keyboard.down(key); await sleep(90); await page.keyboard.up(key);
+          await page.keyboard.press('Space');
+          await sleep(60);
+          continue;
+        }
         const box = await mg.first().boundingBox({ timeout: 500 }).catch(() => null);
         // Mixed input: taps, holds, sweeps, keys — enough to complete any minigame.
         const r = Math.random();
