@@ -9,9 +9,9 @@ import { hasMat } from '../data/materials.js';
 import { ALL_OPTION_LISTS, PALETTES } from '../data/options.js';
 import { TRADITIONS } from '../data/traditions.js';
 import { damascusConsistent, PATTERN_COUNT, rareColor, VISIBILITY_CAP, type DamascusData } from '../item/damascus.js';
-import { CATEGORY_INFO, createDraft, SEGMENTS } from '../item/factory.js';
+import { ARROW_COUNT, BOW_SECTIONS, CATEGORY_INFO, createDraft, isCraftable, SEGMENTS } from '../item/factory.js';
 import { refreshDerived } from '../item/finalize.js';
-import type { Category, Item, StageQuality } from '../item/types.js';
+import { ITEM_VERSION, type Category, type Item, type StageQuality } from '../item/types.js';
 
 export const SHOWCASE_LIMITS = { bodyBytes: 24_000, name: 48, player: 20, workshop: 28, season: 12 };
 
@@ -54,12 +54,14 @@ const MUTATIONS = ['colorband', 'speckle', 'ghostedge', 'veins', 'halo', 'invert
 export function sanitizeShowcaseItem(raw: unknown): SanitizeResult {
   if (!isObj(raw)) return { ok: false, error: 'Missing piece.' };
   const category = raw.category as Category;
-  if (!['sword', 'dagger', 'shield'].includes(category)) return { ok: false, error: 'Unknown kind of piece.' };
+  if (!isCraftable(category)) return { ok: false, error: 'Unknown kind of piece.' };
   const seed = Number(raw.seed);
   if (!Number.isInteger(seed) || seed < 0 || seed > 0xffffffff) return { ok: false, error: 'Invalid seed.' };
   const trad = typeof raw.tradition === 'string' && TRADITIONS.some((t) => t.id === raw.tradition) ? raw.tradition : 'foundry';
   const info = CATEGORY_INFO[category];
   const it = createDraft(category, trad, cleanText(raw.creator, SHOWCASE_LIMITS.player) || 'A smith', int(raw.createdDay, 1, 100000, 1), cleanText(raw.createdSeason, SHOWCASE_LIMITS.season) || 'Spring', seed);
+  // Keep the piece's version: unmarked or version-1 posts are legacy and render with the original renderer.
+  it.version = int(raw.version, 1, ITEM_VERSION, 1);
   it.id = cleanText(raw.id, 40) || it.id;
   it.createdAt = int(raw.createdAt, 0, 8.64e15, Date.now());
   it.name = cleanText(raw.name, SHOWCASE_LIMITS.name) || 'Unnamed Work';
@@ -74,6 +76,8 @@ export function sanitizeShowcaseItem(raw: unknown): SanitizeResult {
     intents: (Array.isArray(d.intents) ? d.intents : []).filter((x: unknown) => typeof x === 'string' && ALL_OPTION_LISTS.intent.some((o) => o.id === x)).slice(0, 2),
   };
   if (category === 'dagger' && d.method === 'damascus') it.design.method = 'damascus';
+  if (category === 'bow') it.design.method = opt('bowMethod', d.method, 'self');
+  if (category === 'armor') it.design.method = opt('armorMethod', d.method, 'gambeson');
 
   const m = isObj(raw.materials) ? raw.materials : {};
   it.materials = { primary: matId(m.primary, 'iron'), secondary: matId(m.secondary, 'brass'), grip: matId(m.grip, 'oak') };
@@ -126,6 +130,55 @@ export function sanitizeShowcaseItem(raw: unknown): SanitizeResult {
       rimGap: num(s.rimGap, -3, 3, 0),
     });
     if (isObj(raw.hilt)) it.hilt = { guard: 'straight', guardWidth: 10, gripLength: 16, gripMaterial: 'leather', wrap: 'none', wrapColor: hex(raw.hilt.wrapColor, '#7a4a2a'), pommel: 'round', guardOffset: 0, guardTilt: 0, pommelOffset: 0 };
+  }
+
+  if (it.bow) {
+    const b = isObj(raw.bow) ? raw.bow : {};
+    const orNone = (v: unknown) => (typeof v === 'string' && hasMat(v) ? v : '');
+    Object.assign(it.bow, {
+      profile: opt('bowProfile', b.profile, 'longbow'),
+      length: int(b.length, info.lengthRange[0], info.lengthRange[1], it.bow.length),
+      limb: num(b.limb, 2, 4, 3),
+      upper: nums(b.upper, BOW_SECTIONS, -1, 1),
+      lower: nums(b.lower, BOW_SECTIONS, -1, 1),
+      draw: num(b.draw, 0, 1, 0.7),
+      hinge: num(b.hinge, 0, 1, 0),
+      backing: orNone(b.backing),
+      belly: orNone(b.belly),
+      glue: num(b.glue, 0, 1, 0.8),
+      string: matId(b.string, 'linenthread'),
+      stringQuality: num(b.stringQuality, 0, 1, 0.7),
+      nock: orNone(b.nock),
+      gripMaterial: matId(b.gripMaterial, 'leather'),
+      wrapColor: hex(b.wrapColor, it.bow.wrapColor),
+    });
+  }
+  if (it.arrows) {
+    const a = isObj(raw.arrows) ? raw.arrows : {};
+    Object.assign(it.arrows, {
+      count: ARROW_COUNT,
+      length: int(a.length, info.lengthRange[0], info.lengthRange[1], it.arrows.length),
+      point: opt('arrowPoint', a.point, 'bodkin'),
+      fletch: opt('fletchStyle', a.fletch, 'parabolic'),
+      nock: typeof a.nock === 'string' && hasMat(a.nock) ? a.nock : '',
+      binding: matId(a.binding, 'linenthread'),
+      crest: hex(a.crest, it.arrows.crest),
+      straight: nums(a.straight, ARROW_COUNT, 0, 1, 0.8),
+      spine: nums(a.spine, ARROW_COUNT, -1, 1),
+      fletchErr: nums(a.fletchErr, ARROW_COUNT, -1, 1),
+      pointQuality: num(a.pointQuality, 0, 1, 0.7),
+    });
+  }
+  if (it.armor) {
+    const a = isObj(raw.armor) ? raw.armor : {};
+    Object.assign(it.armor, {
+      method: it.design.method ?? 'gambeson',
+      cut: opt('armorCut', a.cut, 'jack'),
+      even: nums(a.even, 8, 0, 1, 0.75),
+      gaps: num(a.gaps, 0, 1, 0.1),
+      dents: nums(a.dents, 8, 0, 1),
+      trimColor: hex(a.trimColor, it.armor.trimColor),
+    });
   }
 
   const su = isObj(raw.surface) ? raw.surface : {};
@@ -190,7 +243,7 @@ export function sanitizeShowcaseItem(raw: unknown): SanitizeResult {
   for (const k of QUALITY_KEYS) if (q[k] !== undefined) it.quality[k] = num(q[k], 0, 1, 0.5);
   it.blemishes = (Array.isArray(raw.blemishes) ? raw.blemishes.slice(0, 9) : [])
     .filter((b: any) => isObj(b) && BLEMISH_KINDS.includes(b.kind))
-    .map((b: any) => ({ t: num(b.t, 0, 1, 0.5), u: num(b.u, -1, 1, 0), kind: b.kind }));
+    .map((b: any) => ({ t: num(b.t, 0, 1, 0.5), u: num(b.u, -1, 1, 0), kind: b.kind, ...(b.depth !== undefined ? { depth: num(b.depth, 0, 1, 1) } : {}) }));
   it.mutations = (Array.isArray(raw.mutations) ? raw.mutations : []).filter((x: unknown) => typeof x === 'string' && MUTATIONS.includes(x)).slice(0, 4);
   it.history = [];
   refreshDerived(it);

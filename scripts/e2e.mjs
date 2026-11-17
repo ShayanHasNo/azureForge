@@ -48,8 +48,9 @@ try {
     const app = window.__app;
     app.state.gold = 2000;
     app.state.reputation = 40;
-    for (const m of ['iron', 'brass', 'silver', 'oak', 'dragonsteel', 'starmetal', 'moonstone', 'gardenglass', 'walnut', 'garnet', 'riverstone', 'slate']) app.state.materials[m] = (app.state.materials[m] ?? 0) + 8;
-    app.state.upgrades.push('smallanvil', 'shieldframe', 'loupe', 'bellows', 'wheel', 'gemsetter', 'finebench', 'collectionroom');
+    for (const m of ['iron', 'brass', 'silver', 'oak', 'dragonsteel', 'starmetal', 'moonstone', 'gardenglass', 'walnut', 'garnet', 'riverstone', 'slate',
+      'yew', 'ash', 'hickory', 'cedar', 'goose', 'linenthread', 'leather', 'sinew', 'oxhorn', 'flint']) app.state.materials[m] = (app.state.materials[m] ?? 0) + 8;
+    app.state.upgrades.push('smallanvil', 'shieldframe', 'loupe', 'bellows', 'wheel', 'gemsetter', 'finebench', 'collectionroom', 'tillertree', 'fletchjig');
     app.state.journals.push('journal_folds', 'journal_tinkerer');
     app.refresh();
   });
@@ -72,6 +73,11 @@ try {
     await sleep(600);
     if (opts.damascus) {
       await page.click('button.opt:has-text("Damascus")');
+      await sleep(200);
+    }
+    if (opts.option) {
+      // a design choice, e.g. a bow's construction method
+      await page.click(`.craft-side .ctl >> text="${opts.option}"`);
       await sleep(200);
     }
     const t0 = Date.now();
@@ -99,6 +105,13 @@ try {
         else if (r < 0.88 && Date.now() - t0 > 30000) await page.keyboard.press('Enter');
         else await page.keyboard.press('Space');
         await sleep(60);
+        continue;
+      }
+      // The Experimental Workshop will not go on until a second metal is chosen for the fusion.
+      const fuse = page.locator('.craft-side .ctl[data-key="fused"] .matcard:not(.locked)');
+      if ((await fuse.count()) && !(await page.locator('.craft-side .ctl[data-key="fused"] .matcard.sel').count())) {
+        await fuse.first().click();
+        await sleep(250);
         continue;
       }
       const go = page.locator('.craft-side .panel-foot button.primary:not([disabled])');
@@ -149,6 +162,26 @@ try {
   if (!(await page.locator('[data-testid="damascus-card"]').count())) throw new Error('showcase piece opened without its Damascus certificate');
   await shot('19b-showcase-piece');
   await closeModals();
+  // The bowyer's and fletcher's work: a bow built by its own method's stages, and a matched set of arrows.
+  const made = async (category, stages, check) => {
+    const it = await page.evaluate(() => { const i = window.__app.state.items.at(-1); return { category: i.category, stages: i.history.map((h) => h.stage), stats: i.stats, bow: i.bow, arrows: i.arrows, version: i.version }; });
+    log(category, JSON.stringify({ stages: it.stages, stats: it.stats }));
+    if (it.category !== category) throw new Error(`expected a ${category}, made a ${it.category}`);
+    for (const s of stages) if (!it.stages.includes(s)) throw new Error(`${category} skipped its ${s} stage`);
+    check(it);
+  };
+  await craft('Bow', 'Traditional Foundry', '22-bow');
+  await made('bow', ['stave', 'bowheat', 'tiller', 'string'], (it) => {
+    if (!it.bow || it.bow.upper.length !== 6 || !(it.stats.drawWeight > 0) || !(it.stats.cast > 0)) throw new Error('bow is missing its tiller or its stats');
+  });
+  await craft('Arrows', 'Traditional Foundry', '23-arrows');
+  await made('arrows', ['straighten', 'pointheat', 'points', 'fletch'], (it) => {
+    if (!it.arrows || it.arrows.straight.length !== 6 || it.arrows.fletchErr.length !== 6 || !(it.stats.flight > 0)) throw new Error('arrows are missing their set data or stats');
+  });
+  if (!process.env.QUICK) {
+    await craft('Bow', 'Mountain', '24-backed-bow', { option: 'Backed bow' });
+    await made('bow', ['stave', 'backing', 'tiller', 'string'], (it) => { if (!it.bow.backing) throw new Error('backed bow has no backing'); });
+  }
   const crafted = [['Dagger', 'Patternwrights', '11-pattern'], ['Shield', 'Mountain', '12-mountain'], ['Sword', 'Celestial', '13-celestial'], ['Dagger', 'Glassgarden', '14-glass'], ['Sword', 'Experimental', '15-exp']];
   const only = process.env.ONLY ? process.env.ONLY.split(',') : null;
   for (const c of (process.env.QUICK ? [] : crafted)) if (!only || only.some((o) => c[1].includes(o))) await craft(...c);

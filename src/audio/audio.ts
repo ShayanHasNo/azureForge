@@ -260,6 +260,14 @@ export class AudioEngine implements GameAudio {
     return Promise.resolve();
   }
 
+  /** Pause all sound (the game was hidden). unlock() resumes it. */
+  suspend(): void {
+    try {
+      const g = this.g as Graph | null;
+      if (g && g.ctx.state === 'running') void g.ctx.suspend().catch(() => undefined);
+    } catch { /* ignore */ }
+  }
+
   private build(): void {
     const w = window as unknown as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext };
     const Ctor = w.AudioContext ?? w.webkitAudioContext;

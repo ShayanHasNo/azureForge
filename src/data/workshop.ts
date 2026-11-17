@@ -55,11 +55,14 @@ export interface UpgradeDef { id: string; name: string; cost: number; desc: stri
 export const UPGRADES: UpgradeDef[] = [
   { id: 'smallanvil', name: 'Horned Bench Anvil', cost: 40, desc: 'A small anvil for fine work.', effect: 'Unlocks daggers.' },
   { id: 'bellows', name: 'Leather Bellows', cost: 60, desc: 'Grandmother\'s bellows, re-stitched.', effect: 'Adds a bellows control to heat preparation (hold B / the bellows button for a gentle, steady push).' },
-  { id: 'loupe', name: 'Engraver\'s Loupe', cost: 70, desc: 'A brass loupe on a stand.', effect: 'Unlocks knotwork & feather engraving; shows a magnified guide while engraving.' },
+  { id: 'loupe', name: 'Engraver\'s Loupe', cost: 70, desc: 'A brass loupe on a stand.', effect: 'Unlocks knotwork & feather engraving; shows a magnified guide while engraving, and a stronger loupe at final inspection.' },
+  { id: 'lantern', name: 'Bullseye Lantern', cost: 85, desc: 'A lensed lantern that throws a wide, even beam.', effect: 'Final inspection: the lamp lights a wider area and is more forgiving about its angle.' },
   { id: 'wheel', name: 'Polishing Wheel', cost: 90, desc: 'A treadle-driven felt wheel.', effect: 'Unlocks the reflective texture; polishing gains a wheel mode with a steadier contact.' },
   { id: 'finebench', name: 'Fine Workbench', cost: 110, desc: 'A bench with vices and fine tools.', effect: 'Unlocks ring guards, wire wraps and a second gem slot.' },
   { id: 'gemsetter', name: 'Gem-setter\'s Kit', cost: 80, desc: 'Prongs, bezels and patience.', effect: 'Allows gems on the guard and blade as well as the pommel.' },
   { id: 'shieldframe', name: 'Shield Frame', cost: 150, desc: 'A jig for planking and rimming shields.', effect: 'Unlocks shields.', reputation: 6 },
+  { id: 'tillertree', name: 'Tillering Tree', cost: 70, desc: 'A notched post with a pulley and a long view of the limbs.', effect: 'Unlocks bows.', reputation: 2 },
+  { id: 'fletchjig', name: 'Fletching Jig', cost: 45, desc: 'A little clamp that holds a feather true while the glue sets.', effect: 'Unlocks arrows; once the first arrow of a set is fletched, the rest follow it more closely.' },
   { id: 'collectionroom', name: 'Collection Room', cost: 220, desc: 'Open up the back room as a gallery.', effect: 'Adds a gallery room with 12 more display plinths.', reputation: 10 },
 ];
 

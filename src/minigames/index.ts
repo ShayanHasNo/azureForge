@@ -10,7 +10,13 @@ import { engraveGame } from './engrave';
 import { assemblyGame } from './assembly';
 import { constellationGame } from './constellation';
 import { inspectGame } from './inspect';
+import { tillerGame } from './tiller';
+import { stringGame } from './string';
+import { straightenGame } from './straighten';
+import { fletchGame } from './fletch';
+import { stitchGame } from './stitch';
+import { weaveGame } from './weave';
 
 export const MINIGAMES: Record<string, MinigameDef> = Object.fromEntries(
-  [hammerGame, heatGame, annealGame, fusionGame, foldGame, grindGame, polishGame, engraveGame, assemblyGame, constellationGame, inspectGame].map((g) => [g.id, g]),
+  [hammerGame, heatGame, annealGame, fusionGame, foldGame, grindGame, polishGame, engraveGame, assemblyGame, constellationGame, inspectGame, tillerGame, stringGame, straightenGame, fletchGame, stitchGame, weaveGame].map((g) => [g.id, g]),
 );

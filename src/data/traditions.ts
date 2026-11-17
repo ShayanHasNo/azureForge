@@ -1,9 +1,21 @@
 // Crafting traditions. Each has its own stage sequence, minigame variants,
 // material palette and decorative language — they are not cosmetic skins.
 
-export type StageId =
+export type CoreStageId =
   | 'design' | 'materials' | 'heat' | 'anneal' | 'fusion' | 'fold' | 'damascus' | 'hammer' | 'grind'
   | 'inlay' | 'surface' | 'hilt' | 'engrave' | 'infusion' | 'finish' | 'appraisal';
+
+/** Stages of the bowyer's, fletcher's and armourer's crafts (see crafting/craftStages.ts). */
+export type CraftStageId =
+  // bows
+  | 'stave' | 'bowheat' | 'backing' | 'glueup' | 'cure' | 'tiller' | 'string'
+  // arrows
+  | 'straighten' | 'pointheat' | 'points' | 'fletch'
+  // body armour
+  | 'padding' | 'quilt' | 'lacing' | 'harden' | 'mould' | 'tooling' | 'wax' | 'straps' | 'wire' | 'rings' | 'weave' | 'rivets'
+  | 'plateheat' | 'plates' | 'lace' | 'raise' | 'planish' | 'articulate' | 'burnish';
+
+export type StageId = CoreStageId | CraftStageId;
 
 export interface TraditionDef {
   id: string;
@@ -27,7 +39,7 @@ export interface TraditionDef {
   quirks?: boolean;
 }
 
-const ALL_METALS = ['brass', 'copper', 'bronze', 'iron', 'silver', 'azuresteel', 'moonstone', 'dragonsteel', 'starmetal'];
+const ALL_METALS = ['brass', 'copper', 'bronze', 'iron', 'steel', 'silver', 'sunbronze', 'azuresteel', 'moonstone', 'crucible', 'dragonsteel', 'starmetal', 'meteoric'];
 
 export const TRADITIONS: TraditionDef[] = [
   {
@@ -53,7 +65,7 @@ export const TRADITIONS: TraditionDef[] = [
     blurb: 'Starlight, runes and gentle glow.',
     philosophy: 'Metal that remembers the sky. The Atelier adds a starlight infusion stage — tracing living constellations — and favours runes, glow and iridescence.',
     stages: ['design', 'materials', 'heat', 'hammer', 'grind', 'surface', 'hilt', 'engrave', 'infusion', 'finish', 'appraisal'],
-    primaries: ['silver', 'moonstone', 'starmetal', 'azuresteel', 'gardenglass', 'brass'], tier: 3, hammerStyle: 'melodic', grindMode: 'symmetric', surfaceMode: 'polish',
+    primaries: ['silver', 'moonstone', 'starmetal', 'meteoric', 'azuresteel', 'gardenglass', 'brass'], tier: 3, hammerStyle: 'melodic', grindMode: 'symmetric', surfaceMode: 'polish',
     favours: ['celestial', 'lunar', 'mystic', 'magical', 'starry'],
     unlock: { reputation: 30, friend: { npc: 'lyra', level: 3 }, hint: 'Befriend Lyra the astronomer, or earn 30 reputation.' },
   },
@@ -109,4 +121,37 @@ export const STAGE_INFO: Record<StageId, { name: string; icon: string; blurb: st
   infusion: { name: 'Starlight Infusion', icon: '✦', blurb: 'Trace a constellation into the metal.' },
   finish: { name: 'Final Finishing', icon: '✺', blurb: 'Choose the finish and inspect for flaws.' },
   appraisal: { name: 'Inspection & Appraisal', icon: '⌕', blurb: 'Admire, name and appraise your work.' },
+  // bows
+  stave: { name: 'Roughing the Stave', icon: '▥', blurb: 'Work the stave down evenly with the drawknife and rasp.' },
+  bowheat: { name: 'Heat-treating', icon: '♨', blurb: 'Toast the belly over the coals to harden it.' },
+  backing: { name: 'Backing', icon: '≡', blurb: 'Lay the backing down evenly along the back of the bow.' },
+  glueup: { name: 'Glue-up', icon: '≋', blurb: 'Stack and align the layers before the glue grabs.' },
+  cure: { name: 'Curing', icon: '❄', blurb: 'Let the glue and sinew cure slowly — not too warm, not too damp.' },
+  tiller: { name: 'Tillering', icon: '◠', blurb: 'Scrape the limbs until they bend in one even curve.' },
+  string: { name: 'Stringing', icon: '∿', blurb: 'Twist a bowstring, evenly, strand over strand.' },
+  // arrows
+  straighten: { name: 'Matching & Straightening', icon: '⟋', blurb: 'Choose a matched set of shafts and straighten each one.' },
+  pointheat: { name: 'Heating the Points', icon: '♨', blurb: 'Bring the point blanks to heat.' },
+  points: { name: 'Making the Points', icon: '⚒', blurb: 'Forge or knap the points.' },
+  fletch: { name: 'Fletching', icon: '➶', blurb: 'Set three feathers on each shaft, a third of a turn apart.' },
+  // body armour
+  padding: { name: 'Laying the Padding', icon: '▤', blurb: 'Spread the wool evenly between the linen layers.' },
+  quilt: { name: 'Quilting', icon: '┊', blurb: 'Stitch the channels, even and close.' },
+  lacing: { name: 'Lacing Points', icon: '╋', blurb: 'Work the eyelets and lace the closures.' },
+  harden: { name: 'Hardening', icon: '♨', blurb: 'Soak the hide and bring the water to just the right heat.' },
+  mould: { name: 'Moulding', icon: '⚒', blurb: 'Work the softened hide over the form before it sets.' },
+  tooling: { name: 'Tooling', icon: '✧', blurb: 'Cut and stamp the decoration into the leather.' },
+  wax: { name: 'Waxing', icon: '▤', blurb: 'Burnish wax into the hardened surface.' },
+  straps: { name: 'Straps & Buckles', icon: '╋', blurb: 'Rivet on the straps and buckles.' },
+  wire: { name: 'Drawing the Wire', icon: '♨', blurb: 'Soften the rod and draw it down to wire.' },
+  rings: { name: 'Coiling & Cutting Rings', icon: '⚒', blurb: 'Wind the wire, cut the coil into rings and flatten the ends.' },
+  weave: { name: 'Weaving the Mail', icon: '◍', blurb: 'Link each ring through four others.' },
+  rivets: { name: 'Riveting the Rings', icon: '⚒', blurb: 'Close every ring with a tiny rivet.' },
+  plateheat: { name: 'Heating the Sheet', icon: '♨', blurb: 'Bring the metal to working heat.' },
+  plates: { name: 'Making the Plates', icon: '⚒', blurb: 'Cut, dish and punch the small plates.' },
+  lace: { name: 'Lacing the Rows', icon: '┊', blurb: 'Lace each row of plates so it overlaps the next.' },
+  raise: { name: 'Raising', icon: '⚒', blurb: 'Raise the breastplate over the stakes, course by course.' },
+  planish: { name: 'Planishing', icon: '▤', blurb: 'Smooth away the hammer marks with close, light blows.' },
+  articulate: { name: 'Articulation', icon: '╋', blurb: 'Rivet the plates so they slide over one another.' },
+  burnish: { name: 'Burnishing', icon: '✺', blurb: 'Bring up the final surface.' },
 };

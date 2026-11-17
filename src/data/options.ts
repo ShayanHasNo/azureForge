@@ -123,6 +123,7 @@ export const POMMELS: OptionDef[] = [
   o('crown', 'Crown', 'A pointed crown.', ['regal', 'ceremonial'], undefined, 0.08),
   o('fishtail', 'Fishtail', 'A split, flaring end.', ['ancient', 'wild']),
   o('gearwheel', 'Gearwheel', 'A toothed brass gear.', ['strange', 'ornate'], { mastery: { material: 'brass', level: 5 } }, 0.12),
+  o('scentstopper', 'Scent-stopper', 'A flared, faceted stopper — a swordsmith\'s pommel.', ['elegant', 'traditional'], { mastery: { material: 'steel', level: 5 } }, 0.06),
 ];
 
 export const WRAPS: OptionDef[] = [
@@ -162,6 +163,54 @@ export const METHODS: OptionDef[] = [
   o('damascus', 'Damascus', 'Stack, fold and etch two metals into one of 1000 collectible patterns. How clearly the pattern shows depends on your forging — and a little luck.', ['pattern', 'ornate'], { categories: ['dagger'] }, 0.15),
 ];
 
+// -------------------------------------------------------------- bows
+export const BOW_METHODS: OptionDef[] = [
+  o('self', 'Self bow', 'One stave, one piece of wood. Everything depends on the tillering.', ['traditional', 'humble'], { categories: ['bow'] }),
+  o('backed', 'Backed bow', 'Sinew, rawhide or a hickory strip glued to the back takes the tension, so the stave can bend further.', ['practical', 'steadfast'], { categories: ['bow'] }, 0.06),
+  o('laminated', 'Laminated bow', 'Thin strips of two woods glued up on a form: a springy back, a tough belly.', ['elegant', 'pattern'], { categories: ['bow'] }, 0.1),
+  o('composite', 'Composite horn bow', 'Horn on the belly, a wooden core, sinew on the back, hide glue and a long cure. Short, fierce and demanding.', ['ancient', 'ornate', 'strange'], { categories: ['bow'], journal: 'journal_ancients' }, 0.18),
+];
+export const BOW_PROFILES: OptionDef[] = [
+  o('longbow', 'Longbow', 'Tall, narrow and deep in the belly. Bends in one long arc.', ['traditional', 'elegant'], { categories: ['bow'] }),
+  o('flatbow', 'Flatbow', 'Wide, flat limbs and a stiff, narrow handle. Forgiving of lesser wood.', ['practical', 'rustic'], { categories: ['bow'] }),
+  o('recurve', 'Recurve', 'Tips swept forward, away from the archer. Faster, and harder to tiller.', ['swift', 'elegant'], { categories: ['bow'] }, 0.08),
+  o('reflex', 'Reflex-deflex', 'Handle set back, limbs swept forward. Smooth to draw.', ['graceful', 'strange'], { categories: ['bow'] }, 0.08),
+];
+export const BOW_NOCKS: OptionDef[] = [
+  o('self', 'Self nocks', 'String grooves cut straight into the limb tips.', ['humble', 'minimal'], { categories: ['bow'] }),
+  o('oxhorn', 'Horn nocks', 'Pale horn tips, shaped and polished.', ['traditional', 'elegant'], { categories: ['bow'] }, 0.05),
+  o('buffalohorn', 'Black horn nocks', 'Dark buffalo-horn tips.', ['dark', 'elegant'], { categories: ['bow'] }, 0.06),
+  o('antler', 'Antler nocks', 'Tips of shed antler.', ['rustic', 'wild'], { categories: ['bow'] }, 0.05),
+];
+
+// -------------------------------------------------------------- arrows
+export const ARROW_POINTS: OptionDef[] = [
+  o('bodkin', 'Bodkin', 'A long, square-sectioned spike. Made to find the gaps in armour.', ['practical', 'keen'], { categories: ['arrows'] }),
+  o('broadhead', 'Broadhead', 'A wide, barbed hunting head.', ['wild', 'mighty'], { categories: ['arrows'] }, 0.04),
+  o('leaf', 'Leaf point', 'A slim leaf-shaped head for the target butts.', ['elegant', 'graceful'], { categories: ['arrows'] }),
+  o('flint', 'Knapped flint', 'A stone point, flaked to an edge and bound on with sinew.', ['ancient', 'rustic'], { categories: ['arrows'] }, 0.06),
+];
+export const FLETCH_STYLES: OptionDef[] = [
+  o('parabolic', 'Parabolic', 'A low rounded vane. Quiet and stable.', ['practical'], { categories: ['arrows'] }),
+  o('shield', 'Shield-cut', 'A vane with a notched trailing edge. A little more drag, a little more steering.', ['traditional'], { categories: ['arrows'] }),
+  o('traditional', 'Long triangular', 'Tall war-arrow fletchings, bound on with thread.', ['ancient', 'mighty'], { categories: ['arrows'] }, 0.04),
+];
+
+// -------------------------------------------------------------- body armour
+export const ARMOR_METHODS: OptionDef[] = [
+  o('gambeson', 'Quilted gambeson', 'Layers of linen stuffed with wool and quilted in channels. Light, warm, and better than it looks.', ['humble', 'practical'], { categories: ['armor'] }),
+  o('cuirbouilli', 'Hardened leather', 'Thick hide soaked, moulded over a form and baked hard — cuir bouilli.', ['rustic', 'practical'], { categories: ['armor'] }, 0.05),
+  o('mail', 'Riveted mail', 'Thousands of small rings, each linked through four others and riveted shut.', ['traditional', 'steadfast'], { categories: ['armor'] }, 0.1),
+  o('scale', 'Scale & lamellar', 'Rows of small plates laced together, each row overlapping the next.', ['ancient', 'pattern'], { categories: ['armor'] }, 0.12),
+  o('brigandine', 'Brigandine', 'Small plates riveted inside a cloth coat, so only the rivet heads show.', ['regal', 'ornate'], { categories: ['armor'] }, 0.12),
+  o('plate', 'Plate cuirass', 'A breastplate raised from sheet over stakes, planished smooth, with riveted lames below.', ['mighty', 'bright', 'ceremonial'], { categories: ['armor'] }, 0.08),
+];
+export const ARMOR_CUTS: OptionDef[] = [
+  o('vest', 'Vest', 'Sleeveless and short. Light and easy to move in.', ['swift', 'light'], { categories: ['armor'] }),
+  o('jack', 'Jack', 'Hip length with short sleeves. The everyday soldier\'s coat.', ['practical', 'traditional'], { categories: ['armor'] }),
+  o('coat', 'Long coat', 'Skirted to the thigh and split for riding. More cover, more weight.', ['mighty', 'heavy'], { categories: ['armor'] }),
+];
+
 export const FULLERS: OptionDef[] = [
   o('none', 'None', 'A plain flat section.'),
   o('single', 'Single fuller', 'One central groove.', ['traditional']),
@@ -186,6 +235,9 @@ export const TEXTURES: OptionDef[] = [
   o('tidal', 'Tidal', 'Concentric tide-rings.', ['lunar', 'river'], { mastery: { material: 'moonstone', level: 3 } }, 0.1),
   o('emberscale', 'Ember-scale', 'Glowing scale-like plates.', ['fiery', 'mountain'], { mastery: { material: 'dragonsteel', level: 1 } }, 0.12),
   o('nebula', 'Nebula', 'Clouds of violet starlight.', ['celestial', 'magical'], { mastery: { material: 'starmetal', level: 5 } }, 0.16),
+  o('watered', 'Watered steel', 'A fine watered grain, like ripples on still water.', ['ancient', 'pattern'], { mastery: { material: 'crucible', level: 1 } }, 0.14),
+  o('widmanstatten', 'Sky-crystal', 'Crossing crystal bands that only fallen iron can show.', ['celestial', 'ancient'], { mastery: { material: 'meteoric', level: 1 } }, 0.14),
+  o('rayed', 'Rayed', 'Fine rays spreading from the guard like sunlight.', ['sun', 'bright'], { mastery: { material: 'sunbronze', level: 5 } }, 0.1),
 ];
 
 // -------------------------------------------------------------- decoration
@@ -206,6 +258,7 @@ export const ENGRAVINGS: OptionDef[] = [
   o('lacework', 'Lacework', 'Silver-fine lace ovals.', ['ornate', 'ceremonial'], { mastery: { material: 'silver', level: 1 } }, 0.55),
   o('constellation', 'Constellation', 'Joined stars of a named sky.', ['celestial'], { mastery: { material: 'starmetal', level: 1 } }, 0.5),
   o('petal', 'Petals', 'Falling glassgarden petals.', ['nature', 'delicate'], { mastery: { material: 'gardenglass', level: 1 } }, 0.45),
+  o('arabesque', 'Arabesque', 'Interlaced scrolls with small spirals where they cross.', ['ornate', 'ancient'], { mastery: { material: 'crucible', level: 3 } }, 0.55),
 ];
 
 export const EMBLEMS: OptionDef[] = [
@@ -225,6 +278,9 @@ export const EMBLEMS: OptionDef[] = [
   o('crescent', 'Crescent', '', ['lunar'], { mastery: { material: 'moonstone', level: 1 } }),
   o('chalice', 'Chalice', '', ['ceremonial'], { mastery: { material: 'silver', level: 5 } }),
   o('comet', 'Comet', '', ['celestial'], { mastery: { material: 'starmetal', level: 3 } }),
+  o('anvil', 'Anvil', '', ['humble', 'traditional'], { mastery: { material: 'steel', level: 1 } }),
+  o('sunburst', 'Sunburst', '', ['sun', 'regal'], { mastery: { material: 'sunbronze', level: 3 } }),
+  o('meteor', 'Meteor', '', ['celestial', 'ancient'], { mastery: { material: 'meteoric', level: 3 } }),
 ];
 
 export const FINISHES: OptionDef[] = [
@@ -244,6 +300,10 @@ export const FINISHES: OptionDef[] = [
   o('moonlit', 'Moonlit', 'Faint silver light beneath the surface.', ['lunar', 'magical'], { mastery: { material: 'moonstone', level: 5 } }, 0.08),
   o('smoulder', 'Smoulder', 'Embers that never quite go out.', ['fiery', 'magical'], { mastery: { material: 'dragonsteel', level: 5 } }, 0.1),
   o('prism', 'Prism', 'Splits light into colour bands.', ['translucent', 'magical'], { mastery: { material: 'gardenglass', level: 5 } }, 0.1),
+  o('satin', 'Satin', 'A soft, even sheen with the faintest grain.', ['clean', 'practical'], { mastery: { material: 'steel', level: 3 } }),
+  o('sunlit', 'Sunlit', 'Warm gold light held in the metal.', ['sun', 'warm', 'bright'], { mastery: { material: 'sunbronze', level: 1 } }, 0.06),
+  o('peacock', 'Peacock temper', 'Temper colours: straw at the spine, purple and blue at the edges.', ['strange', 'ornate'], { mastery: { material: 'crucible', level: 5 } }, 0.1),
+  o('skyiron', 'Sky-iron', 'Dark as a night sky, pricked with points of light.', ['celestial', 'ancient'], { mastery: { material: 'meteoric', level: 5 } }, 0.08),
 ];
 
 // -------------------------------------------------------------- shields
@@ -264,7 +324,7 @@ export const BOSSES: OptionDef[] = [
 export const ALL_OPTION_LISTS: Record<string, OptionDef[]> = {
   direction: DIRECTIONS, motif: MOTIFS, intent: INTENTS, profile: PROFILES, tip: TIPS, guard: GUARDS, pommel: POMMELS,
   wrap: WRAPS, texture: TEXTURES, engraving: ENGRAVINGS, emblem: EMBLEMS, finish: FINISHES, fuller: FULLERS,
-  approach: APPROACHES, method: METHODS, shieldShape: SHIELD_SHAPES, boss: BOSSES,
+  approach: APPROACHES, method: METHODS, bowMethod: BOW_METHODS, bowProfile: BOW_PROFILES, bowNock: BOW_NOCKS, arrowPoint: ARROW_POINTS, fletchStyle: FLETCH_STYLES, armorMethod: ARMOR_METHODS, armorCut: ARMOR_CUTS, shieldShape: SHIELD_SHAPES, boss: BOSSES,
 };
 
 export function findOption(list: string, id: string): OptionDef | undefined {

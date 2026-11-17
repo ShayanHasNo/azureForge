@@ -194,7 +194,8 @@ class Assembly extends BaseMinigame {
     if (h.guard === 'knot') gw *= 0.75;
     if (h.guard === 'stub') gw = Math.max(3, gw * 0.42);
     this.gw = Math.max(2, gw);
-    const g = diffCanvas(full, noGuard), p = diffCanvas(full, noPommel);
+    // parts are cut from the full-resolution sprites, so they match the piece they are fitted to
+    const g = diffCanvas(this.hiOf(full), this.hiOf(noGuard)), p = diffCanvas(this.hiOf(full), this.hiOf(noPommel));
     const mk = (name: Comp['name'], img: HTMLCanvasElement | null, conn: V): Comp => {
       const target = s2scr(this.xf, conn[0], conn[1]);
       const side = this.rng.chance(0.5) ? 1 : -1;
@@ -252,7 +253,7 @@ class Assembly extends BaseMinigame {
     const bare = cloneItem(item); bare.shield!.rimGap = 0; bare.shield!.rim = 0;
     const fullC = this.sprite(full);
     this.baseCanvas = this.sprite(bare);
-    const d = diffCanvas(fullC, this.baseCanvas);
+    const d = diffCanvas(this.hiOf(fullC), this.hiOf(this.baseCanvas));
     this.rimImg = d.count ? d.canvas : null;
     const W = fullC.width, H = fullC.height;
     const sl = shieldLayout(item);
@@ -339,7 +340,9 @@ class Assembly extends BaseMinigame {
   }
   private btnAt(): Btn | null {
     const [x, y] = this.uiPointer();
+    // exact hit first, so the padded touch margins of neighbouring buttons never steal a press
     for (const b of this.buttons()) if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) return b;
+    for (const b of this.buttons()) if (this.hits(b, x, y)) return b;
     return null;
   }
 
@@ -631,7 +634,7 @@ class Assembly extends BaseMinigame {
     ctx.fillStyle = 'rgba(64,46,34,0.55)';
     ctx.fillRect(16, 40, MW - 32, 180);
     if (this.finished && this.finalCanvas) {
-      drawXf(ctx, this.finalCanvas, this.xf);
+      drawXf(ctx, this.hiOf(this.finalCanvas), this.xf);
       return;
     }
     if (this.mode === 'hilt') this.drawHilt(ctx);
@@ -657,7 +660,7 @@ class Assembly extends BaseMinigame {
   }
 
   private drawHilt(ctx: CanvasRenderingContext2D) {
-    drawXf(ctx, this.baseCanvas, this.xf);
+    drawXf(ctx, this.hiOf(this.baseCanvas), this.xf);
     const cur = this.comps[this.ci];
     // socket glow
     if (cur) {
@@ -728,7 +731,7 @@ class Assembly extends BaseMinigame {
   }
 
   private drawInlay(ctx: CanvasRenderingContext2D) {
-    drawXf(ctx, this.baseCanvas, this.xf);
+    drawXf(ctx, this.hiOf(this.baseCanvas), this.xf);
     const cur = this.stones[this.si];
     const r = this.stoneR;
     // sockets
@@ -790,7 +793,7 @@ class Assembly extends BaseMinigame {
   }
 
   private drawRim(ctx: CanvasRenderingContext2D) {
-    drawXf(ctx, this.baseCanvas, this.xf);
+    drawXf(ctx, this.hiOf(this.baseCanvas), this.xf);
     const pulse = 0.5 + 0.5 * Math.sin(this.t * 4);
     const sw = this.swayOf(0.7, 1 - 0.08 * this.rimPins);
     const ox = this.rimOff[0] + sw.d[0], oy = this.rimOff[1] + sw.d[1];

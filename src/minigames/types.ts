@@ -22,8 +22,12 @@ export interface MinigameEnv {
   settings: { reducedMotion: boolean; highContrast: boolean; colorblind: boolean };
   /** Unlocked workshop upgrades (e.g. 'bellows', 'loupe', 'wheel'). */
   upgrades: string[];
-  /** Render the item sprite at 1x (cached). */
+  /** The 1x "working" sprite, whose pixels are the logical units of the item's geometry (cached). */
   sprite: (item: Item, view?: View) => HTMLCanvasElement;
+  /** The full-resolution sprite: `renderScale` device pixels per logical pixel. */
+  spriteHi?: (item: Item, view?: View) => HTMLCanvasElement;
+  /** Device pixels per logical pixel in `spriteHi` (1 if absent). */
+  renderScale?: number;
   /** Optional progress text callback for the host UI. */
   onStatus?: (text: string) => void;
 }

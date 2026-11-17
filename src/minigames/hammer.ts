@@ -60,7 +60,8 @@ class Hammer extends BaseMinigame {
 
   constructor(env: MinigameEnv) {
     super(env);
-    this.isShield = env.item.category === 'shield';
+    // anything without a blade (shields, armour, arrow points) is worked round its edge in eight sectors
+    this.isShield = !env.item.blade;
     this.segs = this.isShield ? 8 : SEGMENTS;
     this.strikesPerSeg = Math.round(this.tune(2, 3));
     this.halfW = this.tune(0.1, 0.038);
@@ -323,7 +324,7 @@ class Hammer extends BaseMinigame {
       ctx.translate(255, 152);
       ctx.rotate(Math.PI / 2);
       ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(spr, -Math.round((spr.width * scale) / 2), -Math.round((lay * scale) / 2), spr.width * scale, lay * scale);
+      ctx.drawImage(this.hiOf(spr), -Math.round((spr.width * scale) / 2), -Math.round((lay * scale) / 2), spr.width * scale, lay * scale);
       ctx.restore();
       // heat glow on the current segment
       const sx = this.segmentX(this.seg);

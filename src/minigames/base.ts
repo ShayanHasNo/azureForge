@@ -32,7 +32,7 @@ interface FloatText { text: string; x: number; y: number; life: number; color: s
 export abstract class BaseMinigame implements MinigameInstance {
   protected ctx: CanvasRenderingContext2D;
   protected t = 0;
-  protected pointer = { x: 0, y: 0, down: false, justDown: false, justUp: false, inside: false };
+  protected pointer = { x: 0, y: 0, down: false, justDown: false, justUp: false, inside: false, touch: false };
   protected keys = new Set<string>();
   protected pressed = new Set<string>();
   protected particles: Particle[] = [];
@@ -46,12 +46,20 @@ export abstract class BaseMinigame implements MinigameInstance {
   private finishTimer = 0;
   private pending?: MinigameResult;
   protected readonly mirrored: boolean;
+  /** Canvas buffer pixels per logical pixel (also the hi-res sprite scale). */
+  protected readonly res: number;
+  /** Working sprite → lazily rendered hi-res twin used for drawing. */
+  private twins = new WeakMap<HTMLCanvasElement, () => HTMLCanvasElement>();
 
   constructor(protected env: MinigameEnv) {
     const c = env.canvas;
-    c.width = MW;
-    c.height = MH;
+    // The canvas buffer is `res` times the logical MW×MH, so hi-res sprites and text stay sharp;
+    // every minigame still draws in logical coordinates.
+    this.res = Math.max(1, Math.round(env.spriteHi ? env.renderScale ?? 1 : 1));
+    c.width = MW * this.res;
+    c.height = MH * this.res;
     this.ctx = c.getContext('2d')!;
+    this.ctx.setTransform(this.res, 0, 0, this.res, 0, 0);
     this.ctx.imageSmoothingEnabled = false;
     this.mirrored = env.quirk === 'mirrored';
     const toLocal = (e: PointerEvent) => {
@@ -65,11 +73,12 @@ export abstract class BaseMinigame implements MinigameInstance {
     const down = (e: PointerEvent) => {
       toLocal(e);
       this.pointer.down = true; this.pointer.justDown = true;
+      this.pointer.touch = e.pointerType !== 'mouse';
       try { c.setPointerCapture(e.pointerId); } catch { /* ignore */ }
       this.onPointerDown();
       e.preventDefault();
     };
-    const move = (e: PointerEvent) => { toLocal(e); this.onPointerMove(); };
+    const move = (e: PointerEvent) => { this.pointer.touch = e.pointerType !== 'mouse'; toLocal(e); this.onPointerMove(); };
     const up = (e: PointerEvent) => { toLocal(e); if (this.pointer.down) { this.pointer.down = false; this.pointer.justUp = true; this.onPointerUp(); } };
     const kd = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement)?.tagName === 'INPUT' || (e.target as HTMLElement)?.tagName === 'TEXTAREA') return;
@@ -79,8 +88,14 @@ export abstract class BaseMinigame implements MinigameInstance {
       this.onKey(e.code, true);
     };
     const ku = (e: KeyboardEvent) => { this.keys.delete(e.code); this.onKey(e.code, false); };
+    // A cancelled touch (system gesture, palm, lost capture) must release like a lift, or holds would stick.
+    const cancel = (e: PointerEvent) => up(e);
+    const noMenu = (e: Event) => e.preventDefault(); // long-press must not open a context menu mid-hold
     c.addEventListener('pointerdown', down);
     c.addEventListener('pointermove', move);
+    c.addEventListener('lostpointercapture', cancel);
+    c.addEventListener('contextmenu', noMenu);
+    window.addEventListener('pointercancel', cancel);
     window.addEventListener('pointerup', up);
     window.addEventListener('keydown', kd);
     window.addEventListener('keyup', ku);
@@ -88,6 +103,9 @@ export abstract class BaseMinigame implements MinigameInstance {
     this.cleanup.push(() => {
       c.removeEventListener('pointerdown', down);
       c.removeEventListener('pointermove', move);
+      c.removeEventListener('lostpointercapture', cancel);
+      c.removeEventListener('contextmenu', noMenu);
+      window.removeEventListener('pointercancel', cancel);
       window.removeEventListener('pointerup', up);
       window.removeEventListener('keydown', kd);
       window.removeEventListener('keyup', ku);
@@ -215,7 +233,7 @@ export abstract class BaseMinigame implements MinigameInstance {
   private render() {
     const ctx = this.ctx;
     ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.setTransform(this.res, 0, 0, this.res, 0, 0);
     if (this.shakeAmt > 0) ctx.translate((Math.random() - 0.5) * this.shakeAmt, (Math.random() - 0.5) * this.shakeAmt);
     if (this.mirrored) { ctx.translate(MW, 0); ctx.scale(-1, 1); }
     this.draw(ctx);
@@ -268,6 +286,36 @@ export abstract class BaseMinigame implements MinigameInstance {
     ctx.fillStyle = color;
     ctx.fillRect(x, y, Math.round(w * clamp(v)), h);
   }
+  /**
+   * How far (in logical pixels) a press may wander and still count as a tap. A finger is far
+   * less steady than a mouse, and on a small screen one logical pixel is under one CSS pixel,
+   * so on touch this is measured in CSS pixels.
+   */
+  protected tapSlop(mouse = 4, touchCssPx = 12): number {
+    if (!this.pointer.touch) return mouse;
+    const w = this.env.canvas.getBoundingClientRect().width || MW;
+    return Math.max(mouse, (touchCssPx * MW) / w);
+  }
+  /** Is (x, y) on an on-canvas button? Fingers get a margin around it, since the canvas is small on a phone. */
+  protected hits(r: { x: number; y: number; w: number; h: number }, x: number, y: number): boolean {
+    const pad = this.pointer.touch ? 8 : 0;
+    return x >= r.x - pad && x <= r.x + r.w + pad && y >= r.y - pad && y <= r.y + r.h + pad;
+  }
+  /** True when the player is using a finger rather than a mouse. */
+  protected get touchInput(): boolean {
+    return this.pointer.touch;
+  }
+  /** Draw a canvas whose pixels are `per` to one logical sprite pixel (e.g. a tinted copy of a hi-res twin). */
+  protected drawScaled(img: HTMLCanvasElement, x: number, y: number, scale: number, quarterTurns = 0, per = 1) {
+    const ctx = this.ctx;
+    const w = (img.width / per) * scale, h = (img.height / per) * scale;
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    ctx.translate(Math.round(x), Math.round(y));
+    ctx.rotate((quarterTurns * Math.PI) / 2);
+    ctx.drawImage(img, -Math.round(w / 2), -Math.round(h / 2), w, h);
+    ctx.restore();
+  }
   /** Draw an item sprite scaled by an integer, optionally rotated by 90° steps; (x,y) = centre. */
   protected drawSprite(img: HTMLCanvasElement, x: number, y: number, scale: number, quarterTurns = 0) {
     const ctx = this.ctx;
@@ -275,11 +323,27 @@ export abstract class BaseMinigame implements MinigameInstance {
     ctx.imageSmoothingEnabled = false;
     ctx.translate(Math.round(x), Math.round(y));
     ctx.rotate((quarterTurns * Math.PI) / 2);
-    ctx.drawImage(img, -Math.round((img.width * scale) / 2), -Math.round((img.height * scale) / 2), img.width * scale, img.height * scale);
+    // sized by the working sprite's logical dimensions; drawn from its hi-res twin
+    ctx.drawImage(this.hiOf(img), -Math.round((img.width * scale) / 2), -Math.round((img.height * scale) / 2), img.width * scale, img.height * scale);
     ctx.restore();
   }
+  /**
+   * The 1x working sprite: its pixels are the logical units of the item's geometry, so minigames
+   * measure and hit-test against it. Draw it with drawSprite(), or pass hiOf(sprite) to drawImage
+   * with the same logical destination size, to show the full-resolution version.
+   */
   protected sprite(item: Item = this.env.item, view: View = 'front') {
-    return this.env.sprite(item, view);
+    const c = this.env.sprite(item, view);
+    const hi = this.env.spriteHi;
+    if (hi && this.res > 1) {
+      let made: HTMLCanvasElement | null = null;
+      this.twins.set(c, () => (made ??= hi(item, view)));
+    }
+    return c;
+  }
+  /** The full-resolution twin of a working sprite (or the sprite itself if there is none). */
+  protected hiOf(img: HTMLCanvasElement): HTMLCanvasElement {
+    return this.twins.get(img)?.() ?? img;
   }
   /** A warm workshop backdrop with a soft forge glow; `glow` 0..1. */
   protected backdrop(glow = 0.6, tint = '#3a2418') {

@@ -27,6 +27,7 @@ import { cloneItem } from '../item/factory';
 import { engravingPaths, type Path } from '../item/patterns';
 import type { Item } from '../item/types';
 import { bladePixel, shieldLayout } from '../render/itemRenderer';
+import { armorToolingGeo } from '../render/crafts';
 import { BaseMinigame, COLORS, MH, MW } from './base';
 import { gradeOf, type MinigameDef, type MinigameEnv } from './types';
 
@@ -134,6 +135,7 @@ class Engrave extends BaseMinigame {
   private shieldGeo() {
     const it = this.env.item;
     if (it.shield) return shieldLayout(it);
+    if (it.armor) return armorToolingGeo(it);
     return { cx: 43.5, cy: 51, rx: 40, ry: 46, W: 88, H: 104 };
   }
 
@@ -461,7 +463,7 @@ class Engrave extends BaseMinigame {
     ctx.imageSmoothingEnabled = false;
     ctx.translate(cx, cy);
     if (rot) ctx.rotate(Math.PI / 2);
-    ctx.drawImage(this.previewCanvas, -(W * s) / 2, -(H * s) / 2, W * s, H * s);
+    ctx.drawImage(this.hiOf(this.previewCanvas), -(W * s) / 2, -(H * s) / 2, W * s, H * s);
     ctx.restore();
     if (this.state !== 'done') this.drawGuides(ctx);
     this.drawCuts(ctx);
@@ -564,7 +566,8 @@ class Engrave extends BaseMinigame {
       ctx.fillStyle = '#120c0a';
       ctx.fillRect(lx - 2, ly - 2, size + 4, size + 4);
       try {
-        ctx.drawImage(this.env.canvas, Math.round(gx - src / 2), Math.round(gy - src / 2), src, src, lx, ly, size, size);
+        const r = this.res; // the canvas buffer is in device pixels
+        ctx.drawImage(this.env.canvas, Math.round(gx - src / 2) * r, Math.round(gy - src / 2) * r, src * r, src * r, lx, ly, size, size);
       } catch { /* ignore */ }
       ctx.strokeStyle = '#a07a4a';
       ctx.lineWidth = 2;

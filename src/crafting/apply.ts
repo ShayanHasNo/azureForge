@@ -7,6 +7,7 @@ import { SEGMENTS } from '../item/factory';
 import type { Blemish, Item } from '../item/types';
 import type { MinigameResult } from '../minigames/types';
 import { describeDamascus, rareColor, rollDamascus } from '../item/damascus';
+import { CRAFT_STAGES } from './craftStages';
 
 const arr = (v: any, n: number, fill = 0): number[] => (Array.isArray(v) ? v.slice(0, n).map(Number) : new Array(n).fill(fill));
 
@@ -99,10 +100,20 @@ export const APPLY: Record<string, ApplyFn> = {
   },
 };
 
+// The bowyer's, fletcher's and armourer's stages: each records its score under the part of
+// craftsmanship it counts toward, then writes its own result into the piece.
+for (const [id, st] of Object.entries(CRAFT_STAGES)) {
+  APPLY[id] = (item, r) => {
+    item.quality[st.quality] = r.score; // no method uses the same slot twice (tests check this)
+    st.apply?.(item, r);
+  };
+}
+
 /** Map stage → minigame id. */
 export const STAGE_MINIGAME: Record<string, string> = {
   heat: 'heat', anneal: 'anneal', fusion: 'fusion', fold: 'fold', damascus: 'fold', hammer: 'hammer', grind: 'grind',
   inlay: 'assembly', surface: 'polish', hilt: 'assembly', engrave: 'engrave', infusion: 'constellation', finish: 'inspect',
+  ...Object.fromEntries(Object.entries(CRAFT_STAGES).map(([id, st]) => [id, st.minigame])),
 };
 
 /**
@@ -116,6 +127,11 @@ export function generateBlemishes(item: Item): Blemish[] {
   const n = Math.round(2 + weak(q.prep) * 3 + weak(q.shaping) * 3 + weak(q.structure) * 2 + weak(q.surface) * 3);
   const kinds: Blemish['kind'][] = ['pit', 'scratch', 'scale'];
   const out: Blemish[] = [];
-  for (let i = 0; i < Math.min(9, n); i++) out.push({ t: rng.range(0.06, 0.8), u: rng.range(-0.6, 0.6), kind: rng.pick(kinds) });
+  for (let i = 0; i < Math.min(9, n); i++) {
+    const b: Blemish = { t: rng.range(0.06, 0.8), u: rng.range(-0.6, 0.6), kind: rng.pick(kinds) };
+    // About half are faint: hard to see by eye, but they glint under the inspection lamp.
+    b.depth = rng.chance(0.5) ? Math.round(rng.range(0.08, 0.32) * 100) / 100 : Math.round(rng.range(0.6, 1) * 100) / 100;
+    out.push(b);
+  }
   return out;
 }

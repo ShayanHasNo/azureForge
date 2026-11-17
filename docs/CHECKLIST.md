@@ -99,3 +99,19 @@ Status key: **Not started**, **In progress**, **Implemented** (code is in and wo
 | Damascus certificate on the appraisal page; Collection → Damascus index | Tested (browser playthrough) |
 | Online market showcase: post, browse newest/rarest, withdraw | Tested (`tests/showcase.test.ts`, browser playthrough) |
 | Server-side validation, forged-pattern rejection, rate limit, retention | Tested |
+
+## Phase 12 – Hi-res sprites, inspection lamp, phones, materials, bows & arrows
+| Feature | Status |
+|---|---|
+| Legacy pieces: everything made before the update keeps its original look (frozen renderer) and carries a Legacy tag, in saves and on the showcase | Tested (`tests/legacy.test.ts`, golden pixel hashes) |
+| Hi-res renderer: 2 device pixels per logical pixel, finer bevels, carved engraving, faceted gems | Tested (determinism), checked by eye on contact sheets |
+| Inspection lamp: faint flaws only glint when the raking light comes from the right side; lantern upgrade | Tested (`tests/blemish.test.ts`, browser) |
+| Phone layout: portrait and landscape, bottom menu, finger-sized targets, follow camera, touch-only crafting | Tested (`npm run e2e:mobile`, three emulated phones) |
+| New materials: 4 metals, bow woods, shaft woods, horn, fibres, feathers, cloth, hides, flint; two new market stalls | Tested (`tests/materials.test.ts`, balance tests) |
+| Bows: self, backed, laminated and composite methods; four shapes; tiller and string minigames | Tested (`tests/crafts.test.ts`, browser playthrough of self and backed bows) |
+| Arrows: matched sets of six; straighten and fletch minigames; forged or knapped points | Tested (`tests/crafts.test.ts`, browser playthrough) |
+| Bows and arrows on the showcase | Tested (sanitizer round-trip reproduces identical sprites) |
+| Body armour (six construction methods) | Shelved: drafted in code, not offered in the game (see ARCHITECTURE, *Adding a category*) |
+| Tradition-specific extra stages for bows and arrows (Celestial infusion, Mountain inlay) | Not built: the tradition sets difficulty and decorative options only |
+| Wall pegs and quiver for displaying bows and arrows in the workshop | Not built: they use the existing display rack |
+

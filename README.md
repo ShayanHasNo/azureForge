@@ -49,7 +49,7 @@ Every minigame supports mouse, touch and keyboard. Its controls are shown before
 ## What's in the game
 
 - **Crafting pipeline.** Concept & design, materials, material preparation, shaping, structural refinement, surface treatment, handle & fittings, decoration, final finishing, then inspection & appraisal. Every stage records your choices and measured performance in the item's history.
-- **11 skill minigames:**
+- **15 skill minigames:**
   - timing-based hammering, in six rhythm styles
   - heat management (with a bellows mechanic once you own one)
   - glass annealing
@@ -60,7 +60,11 @@ Every minigame supports mouse, touch and keyboard. Its controls are shown before
   - engraving by tracing
   - component assembly and stone setting
   - constellation infusion
-  - flaw inspection
+  - tillering a bow on the tillering tree: scrape each limb until both bend evenly at your draw weight
+  - twisting a bowstring to the swing of a weight
+  - bend-testing and straightening arrow shafts
+  - fletching: three feathers a third of a turn apart, the cock feather square to the nock
+  - flaw inspection, with a loupe and a raking **inspection lamp**: about half of all flaws are too faint to see by eye, and only glint when the lamp's light comes from the right side
 - **6 crafting traditions**, each with its own stage sequence, minigame styles, materials and decorative language:
   - Traditional Foundry
   - Patternwrights
@@ -68,18 +72,28 @@ Every minigame supports mouse, touch and keyboard. Its controls are shown before
   - Mountain Artisans
   - Glassgarden
   - Experimental Workshop, which lets you reorder stages and adds quirks
-- **10 metals** (plus woods, leathers, gems and stones), each with real trade-offs. Material mastery unlocks creative options, never stat bonuses.
+- **14 metals** — now including steel, sunbronze, crucible steel and meteoric iron — plus bow woods, arrow shafts, horn, sinew and thread, feathers, cloth, hides, gems and stones. Each has real trade-offs. Material mastery unlocks creative options, never stat bonuses.
+- **Hi-res pixel art.** Sprites are drawn at twice the old resolution: same proportions, finer pixels, with crisp bevels, carved engraving and faceted gems. Pieces made before the change are **legacy** pieces: they keep their original look forever and carry a Legacy tag.
 - **Procedural sprites** built in 8 layers: silhouette, material shading, secondary details, 15 textures, hilt and wrap, decoration (your traced engraving, inscription, emblems, gems, stones, constellations), 16 finishes, and effects.
 - **Sword, dagger and shield** item categories, each with its own statistics.
+- **Bows.** Buy the *Tillering Tree* to make bows by four real methods, each with its own stages and materials:
+  - a **self bow** from a single stave, its belly toasted over the fire;
+  - a **backed bow**, with sinew, rawhide or hickory glued to the back;
+  - a **laminated bow**, glued up from strips of two woods;
+  - a **composite horn bow** (horn belly, wooden core, sinew back, a long slow cure), once you have read the right journal.
+
+  Longbow, flatbow, recurve and reflex shapes. The bow's drawn curve *is* your tillering: a stiff limb, a weak limb or a hinge all show in the sprite and in its draw weight, cast, smoothness and stability.
+- **Arrows**, made as a **matched set of six** with the *Fletching Jig*: spine-matched and straightened shafts, forged bodkin, broadhead or leaf points (or knapped flint), and three fletching styles. A set is judged on how alike its arrows are as well as how good each one is.
 - **Damascus daggers.** Choose the *Damascus* forging method for a dagger to stack, fold and etch two metals. Every Damascus dagger carries one of **1000 numbered patterns**, fixed by its steel: every #437 looks like every other #437, and a few indexes are named. Your forging and etching, plus a little luck, decide the pattern's **visibility**. Even flawless work never shows it at 100%. A handful of metal pairings can, very rarely, bloom into a **prized colour**. The finished dagger gets a certificate with its index, visibility and colour, and *Collection → Damascus index* tracks which of the 1000 patterns you've forged. Damascus is purely cosmetic: it never changes stats or value.
 - **Market showcase.** Show any finished piece to other players from its inspection page, and browse everyone's pieces, newest or rarest, in *Village → Showcase*.
 - **A village** with nine villagers. Each has their own tastes and story, and reacts to the actual properties of what you show them. Villagers post open-ended requests ("something that reminds me of the mountains…").
 - **Predictable markets, exploration and journals.**
-  - Five market stalls keep fixed schedules.
+  - Seven market stalls keep fixed schedules, including Old Teodor's archery bench and Maren's mill loft.
   - Seven places to explore each list their reliable finds.
   - Historical journals and mastery challenges round out the world.
 - **A customizable workshop:** decor, little touches (yes, there's a cat), tools that add new mechanics, a display rack showing your real creations, and a collection room.
 - **Synthesized audio.** Generative ambient music, fire, rain, wind and village ambience, plus crafting sounds. Music, ambience and crafting sounds each have their own volume.
+- **Phone-friendly.** Plays in portrait or landscape with touch alone: a thumb-reach bottom menu, full-screen panels, finger-sized buttons, a workshop camera that follows the smith on tall screens, and minigames that get the whole screen while you work. It can be added to the home screen.
 - **Accessibility:** a Relaxed crafting mode, a readable text font (Atkinson Hyperlegible, or switch back to the classic pixel font), reduced motion, high-contrast panels, interface scaling and keyboard play.
 - **Saving.** The game autosaves after every stage, keeps a rolling backup, and supports JSON export/import. An unfinished piece is saved and can be resumed.
 
@@ -108,10 +122,16 @@ This runs renderer determinism, balance simulations, save round-trips and progre
 npm run sim
 ```
 
-For a full browser playthrough with screenshots:
+For a full browser playthrough with screenshots (a sword, a Damascus dagger, a bow, a set of arrows, then one piece from every tradition; `QUICK=1` stops after the arrows):
 
 ```bash
 npm run e2e
+```
+
+For a touch-only playthrough on emulated phones (portrait, landscape and a small Android), which also checks that buttons are on screen and finger-sized:
+
+```bash
+npm run e2e:mobile
 ```
 
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the architecture, data model and design specifications, and [`docs/CHECKLIST.md`](docs/CHECKLIST.md) for the feature checklist.

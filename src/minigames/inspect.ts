@@ -1,3 +1,11 @@
+// Two tools help. The LOUPE magnifies (more with the Engraver's Loupe upgrade).
+// The LAMP throws a low, raking light: inside its beam every remaining flaw
+// catches the light as a glint or a shadow, but only when the light comes from
+// a suitable angle (turn it with Q/E, the mouse wheel or the on-screen dial).
+// About half of all flaws are faint — barely visible by eye even under the
+// loupe — so the lamp is the way to find those. Switch tools with the buttons,
+// L, 1 or 2. Clicking marks a flaw with either tool.
+//
 // Final inspection — slow and relaxed, with no timer. The finished piece is
 // shown large (blades rotated guard-left, scale 3–4; pan by dragging, or by
 // moving the loupe toward an edge). The item's blemishes are already rendered
@@ -17,6 +25,7 @@
 // data: { found: number[] } — indexes into env.item.blemishes
 // details: found, care, wrongMarks
 
+import { hash32 } from '../core/rng';
 import { clamp } from '../core/util';
 import { cloneItem } from '../item/factory';
 import type { Blemish, Item } from '../item/types';
@@ -63,6 +72,9 @@ function blemishCentre(item: Item, b: Blemish): V {
 }
 
 const LOUPE_R = 30;
+const DIAL: V = [MW - 34, 76];
+const DIAL_R = 17;
+type Tool = 'loupe' | 'lamp';
 
 class Inspect extends BaseMinigame {
   private preview: Item;
@@ -75,7 +87,7 @@ class Inspect extends BaseMinigame {
   private loupe: V = [MW / 2, MH / 2];
   private lastP: V = [0, 0];
   private kbHold = 0;
-  private press: { at: V; pan: V; moved: number } | null = null;
+  private press: { at: V; pan: V; moved: number; toolAt: V } | null = null;
   private centres: V[] = [];
   private visible: boolean[] = [];
   private found = new Set<number>();
@@ -88,6 +100,18 @@ class Inspect extends BaseMinigame {
   private visibleCount = 0;
   private hintCool = 0;
   private sweep = 0;
+  // tools
+  private tool: Tool = 'loupe';
+  private loupeZoom: number;
+  private lampAngle = -Math.PI * 0.75; // direction the light travels
+  private lampR: number;
+  private lampSharp: number;
+  private angleMatters: boolean;
+  private best: number[] = []; // per-blemish light direction that shows it best
+  private dialDrag = false;
+  private lampFinds = 0;
+  private lampSeen = false;
+  private wheelHandler: (e: WheelEvent) => void;
 
   constructor(env: MinigameEnv) {
     super(env);
@@ -95,7 +119,8 @@ class Inspect extends BaseMinigame {
     this.preview = cloneItem(item);
     this.spr = this.sprite(this.preview);
     const W = this.spr.width, H = this.spr.height;
-    const blade = !!item.blade && item.category !== 'shield';
+    // long pieces (blades, bows) are laid on their side so they fit the bench
+    const blade = (!!item.blade && item.category !== 'shield') || H > W * 1.6;
     const s = blade ? (item.category === 'dagger' ? 4 : 3) : 3;
     this.base = [240, 138];
     this.xf = { cx: this.base[0], cy: this.base[1], s, rot: blade, W, H };
@@ -128,7 +153,61 @@ class Inspect extends BaseMinigame {
     }
     const [lx, ly] = s2scr(this.xf, W / 2, H / 2);
     this.loupe = [lx, ly];
+    const up = env.upgrades ?? [];
+    this.loupeZoom = up.includes('loupe') ? 3 : 2;
+    this.lampR = up.includes('lantern') ? 62 : 44;
+    this.lampSharp = up.includes('lantern') ? 0.8 : 1.6;
+    this.angleMatters = env.difficulty >= 1; // Relaxed mode: the lamp shows flaws from any angle
+    blems.forEach((_, i) => this.best.push((hash32(item.seed, 0x1a3b, i) / 4294967296) * Math.PI));
+    this.wheelHandler = (e: WheelEvent) => {
+      if (this.tool !== 'lamp') return;
+      e.preventDefault();
+      this.lampAngle += Math.sign(e.deltaY) * 0.2;
+    };
+    env.canvas.addEventListener('wheel', this.wheelHandler, { passive: false });
     env.onStatus?.(this.statusText());
+  }
+
+  protected onDestroy() {
+    this.env.canvas.removeEventListener('wheel', this.wheelHandler);
+  }
+
+  private toolRect(t: Tool) { return { x: t === 'loupe' ? 232 : 288, y: MH - 40, w: 52, h: 20 }; }
+  private overTool(): Tool | null {
+    const [x, y] = this.uiPointer();
+    for (const t of ['loupe', 'lamp'] as const) {
+      const r = this.toolRect(t);
+      if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) return t;
+    }
+    for (const t of ['loupe', 'lamp'] as const) {
+      if (this.hits(this.toolRect(t), x, y) && !this.overFinish()) return t;
+    }
+    return null;
+  }
+  private overDial() {
+    if (this.tool !== 'lamp') return false;
+    const [x, y] = this.uiPointer();
+    return Math.hypot(x - DIAL[0], y - DIAL[1]) <= DIAL_R + 9;
+  }
+  private setTool(t: Tool) {
+    if (this.tool === t) return;
+    this.tool = t;
+    this.env.audio.sfx('click', { pitch: t === 'lamp' ? 1.2 : 0.9 });
+    if (t === 'lamp' && !this.lampSeen) {
+      this.lampSeen = true;
+      this.floatText('Turn the light until flaws glint', MW / 2, 60, COLORS.gold);
+    }
+  }
+  /** How strongly blemish i shows under the lamp right now (0..1). */
+  private glint(i: number): number {
+    if (this.tool !== 'lamp' || !this.visible[i] || this.found.has(i)) return 0;
+    const c = this.centres[i];
+    const [x, y] = s2scr(this.xf, c[0], c[1]);
+    const d = Math.hypot(x - this.loupe[0], y - this.loupe[1]);
+    if (d >= this.lampR) return 0;
+    const fall = 1 - Math.pow(d / this.lampR, 2);
+    const match = this.angleMatters ? Math.pow(Math.abs(Math.cos(this.lampAngle - this.best[i])), this.lampSharp) : 1;
+    return clamp(fall * (0.12 + 0.88 * match));
   }
 
   private statusText() {
@@ -140,8 +219,7 @@ class Inspect extends BaseMinigame {
   private finishRect() { return { x: MW - 132, y: MH - 40, w: 120, h: 20 }; }
   private overFinish() {
     const [x, y] = this.uiPointer();
-    const r = this.finishRect();
-    return x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
+    return this.hits(this.finishRect(), x, y);
   }
 
   private applyView() {
@@ -158,8 +236,31 @@ class Inspect extends BaseMinigame {
     if (this.env.quirk === 'drifting' && !this.reducedMotion) this.sway = [Math.sin(this.t * 0.4) * 4, Math.cos(this.t * 0.31) * 3];
 
     if ((this.pointer.justDown && this.overFinish()) || this.wasPressed('Enter')) { this.complete(); return; }
+    // tools
+    if (this.wasPressed('KeyL')) this.setTool(this.tool === 'lamp' ? 'loupe' : 'lamp');
+    if (this.wasPressed('Digit1')) this.setTool('loupe');
+    if (this.wasPressed('Digit2')) this.setTool('lamp');
+    const overTool = this.pointer.justDown ? this.overTool() : null;
+    if (overTool) { this.setTool(overTool); this.press = null; this.lastP = [this.pointer.x, this.pointer.y]; return; }
+    if (this.tool === 'lamp') {
+      const turn = (this.isDown('KeyE') ? 1 : 0) - (this.isDown('KeyQ') ? 1 : 0);
+      if (turn) this.lampAngle += turn * 1.8 * dt;
+      if (this.pointer.justDown && this.overDial()) this.dialDrag = true;
+      if (this.dialDrag) {
+        if (!this.pointer.down) this.dialDrag = false;
+        else {
+          const [ux, uy] = this.uiPointer();
+          const a = Math.atan2(uy - DIAL[1], ux - DIAL[0]);
+          this.lampAngle = this.mirrored ? Math.PI - a : a;
+        }
+        this.lastP = [this.pointer.x, this.pointer.y];
+        this.applyView();
+        return;
+      }
+    }
 
     const p: V = [this.pointer.x, this.pointer.y];
+    const toolWas: V = [this.loupe[0], this.loupe[1]];
     const moved = p[0] !== this.lastP[0] || p[1] !== this.lastP[1];
     this.lastP = p;
     // keyboard loupe
@@ -172,19 +273,21 @@ class Inspect extends BaseMinigame {
     } else this.kbHold = 0;
     if (moved) this.loupe = [p[0], p[1]];
     // drag to pan / click to mark
-    if (this.pointer.justDown && !this.overFinish()) this.press = { at: p, pan: [...this.pan] as V, moved: 0 };
+    if (this.pointer.justDown && !this.overFinish()) this.press = { at: p, pan: [...this.pan] as V, moved: 0, toolAt: toolWas };
     if (this.press && this.pointer.down) {
       const dx = p[0] - this.press.at[0], dy = p[1] - this.press.at[1];
       this.press.moved = Math.max(this.press.moved, Math.hypot(dx, dy));
-      if (this.press.moved > 6) this.pan = [clamp(this.press.pan[0] + dx, -this.panMax[0], this.panMax[0]), clamp(this.press.pan[1] + dy, -this.panMax[1], this.panMax[1])];
+      if (this.press.moved > this.tapSlop(6, 12)) this.pan = [clamp(this.press.pan[0] + dx, -this.panMax[0], this.panMax[0]), clamp(this.press.pan[1] + dy, -this.panMax[1], this.panMax[1])];
     }
     if (this.press && this.pointer.justUp) {
-      if (this.press.moved <= 6) this.mark(p);
+      // With a finger, the first tap brings the tool over; a tap inside the tool polishes. (A mouse hovers first, so it marks at once.)
+      const placing = this.touchInput && Math.hypot(p[0] - this.press.toolAt[0], p[1] - this.press.toolAt[1]) > (this.tool === 'lamp' ? this.lampR : LOUPE_R) * 0.85;
+      if (this.press.moved <= this.tapSlop(6, 12) && !placing) this.mark(p);
       this.press = null;
     }
     if (this.wasPressed('Space')) this.mark(this.loupe);
-    // edge auto-scroll (not while dragging)
-    if (!this.press) {
+    // edge auto-scroll (not while dragging; mouse only — a finger has no hover, so it would keep sliding)
+    if (!this.press && !this.touchInput) {
       const e = 34, sp = 110 * dt;
       const lx = this.loupe[0], ly = this.loupe[1];
       if (lx < e) this.pan[0] = Math.min(this.panMax[0], this.pan[0] + sp);
@@ -211,6 +314,7 @@ class Inspect extends BaseMinigame {
         if (this.hintCool <= 0) { this.hintCool = 0.6; this.floatText('Already polished', at[0], at[1] - 16, COLORS.dim); }
         return;
       }
+      if (this.tool === 'lamp') this.lampFinds++;
       this.found.add(best);
       this.preview = cloneItem(this.env.item);
       this.preview.blemishes = this.env.item.blemishes.filter((_, i) => !this.found.has(i));
@@ -248,11 +352,11 @@ class Inspect extends BaseMinigame {
     this.env.audio.sfx('success');
     this.finish({
       score,
-      details: { found: frac, care: this.care, wrongMarks: this.wrong },
+      details: { found: frac, care: this.care, wrongMarks: this.wrong, lampFinds: this.lampFinds },
       data: { found: foundArr },
       summary: this.flawless
         ? 'Flawless — a careful look found nothing to mend.'
-        : `${g} inspection — ${missed === 0 ? 'every flaw found and polished away' : `${visFound} of ${this.visibleCount} flaws polished, ${missed} left as character`}${this.wrong > 3 ? ', with some extra fussing' : ''}.`,
+        : `${g} inspection — ${missed === 0 ? 'every flaw found and polished away' : `${visFound} of ${this.visibleCount} flaws polished, ${missed} left as character`}${this.lampFinds ? `, ${this.lampFinds} caught under the lamp` : ''}${this.wrong > 3 ? ', with some extra fussing' : ''}.`,
     }, 1.0);
   }
 
@@ -267,7 +371,7 @@ class Inspect extends BaseMinigame {
     lamp.addColorStop(1, 'rgba(255,240,200,0)');
     ctx.fillStyle = lamp;
     ctx.fillRect(0, 0, MW, MH);
-    drawXf(ctx, this.spr, this.xf);
+    drawXf(ctx, this.hiOf(this.spr), this.xf);
     // polish patches over fixed flaws
     for (const i of this.found) {
       const c = this.centres[i];
@@ -298,12 +402,80 @@ class Inspect extends BaseMinigame {
       ctx.fillStyle = 'rgba(0,0,0,0.18)';
       ctx.fillRect(0, 0, MW, MH);
     }
-    if (!this.finished) this.drawLoupe(ctx);
+    if (!this.finished) { if (this.tool === 'lamp') this.drawLamp(ctx); else this.drawLoupe(ctx); }
+  }
+
+  /** The raking lamp: dims the bench, lights a pool around the pointer, and makes flaws catch the light. */
+  private drawLamp(ctx: CanvasRenderingContext2D) {
+    const [lx, ly] = this.loupe;
+    const R = this.lampR;
+    const ca = Math.cos(this.lampAngle), sa = Math.sin(this.lampAngle);
+    // the room falls into shadow outside the beam
+    const veil = ctx.createRadialGradient(lx, ly, R * 0.55, lx, ly, R * 1.3);
+    veil.addColorStop(0, 'rgba(8,6,10,0)');
+    veil.addColorStop(1, 'rgba(8,6,10,0.55)');
+    ctx.fillStyle = veil;
+    ctx.fillRect(0, 0, MW, MH);
+    // warm light, stronger on the side it comes from
+    ctx.save();
+    ctx.beginPath(); ctx.arc(lx, ly, R, 0, Math.PI * 2); ctx.clip();
+    const warm = ctx.createLinearGradient(lx - ca * R, ly - sa * R, lx + ca * R, ly + sa * R);
+    warm.addColorStop(0, 'rgba(255,222,150,0.26)');
+    warm.addColorStop(1, 'rgba(255,222,150,0.03)');
+    ctx.fillStyle = warm;
+    ctx.fillRect(lx - R, ly - R, R * 2, R * 2);
+    // flaws catching the light
+    this.centres.forEach((c, i) => {
+      const g = this.glint(i);
+      if (g < 0.06) return;
+      const [x, y] = s2scr(this.xf, c[0], c[1]);
+      const kind = this.env.item.blemishes[i]?.kind ?? 'pit';
+      const tw = this.reducedMotion ? 1 : 0.85 + 0.15 * Math.sin(this.t * 7 + i);
+      const a = clamp(g * tw);
+      if (kind === 'scratch') {
+        // a bright hairline with its shadow beside it
+        const dx = this.xf.rot ? 3 : 3, dy = this.xf.rot ? 3 : -3;
+        ctx.strokeStyle = `rgba(255,252,230,${a})`; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(x - dx, y - dy); ctx.lineTo(x + dx, y + dy); ctx.stroke();
+        ctx.strokeStyle = `rgba(20,14,10,${a * 0.7})`;
+        ctx.beginPath(); ctx.moveTo(x - dx + ca, y - dy + sa); ctx.lineTo(x + dx + ca, y + dy + sa); ctx.stroke();
+      } else if (kind === 'pit') {
+        // a hollow: shadow on the near wall, a lit far lip
+        ctx.fillStyle = `rgba(14,10,8,${a * 0.85})`;
+        ctx.beginPath(); ctx.arc(x, y, 2.2, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = `rgba(255,250,225,${a})`; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(x, y, 2.8, this.lampAngle - 0.9, this.lampAngle + 0.9); ctx.stroke();
+      } else {
+        // dull scale: a matt patch that will not shine
+        ctx.fillStyle = `rgba(52,34,24,${a * 0.75})`;
+        ctx.fillRect(Math.round(x) - 3, Math.round(y) - 2, 6, 4);
+        ctx.fillStyle = `rgba(255,236,200,${a * 0.8})`;
+        ctx.fillRect(Math.round(x) - 3 + (ca > 0 ? 6 : -1), Math.round(y) - 2, 1, 4);
+      }
+      if (g > 0.55) {
+        ctx.fillStyle = `rgba(255,255,240,${(g - 0.55) * 1.6 * tw})`;
+        ctx.fillRect(Math.round(x) - 4, Math.round(y), 9, 1); ctx.fillRect(Math.round(x), Math.round(y) - 4, 1, 9);
+      }
+    });
+    ctx.restore();
+    // beam edge and the side the light comes from
+    ctx.strokeStyle = 'rgba(255,222,150,0.4)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(lx, ly, R, 0, Math.PI * 2); ctx.stroke();
+    const sx = lx - ca * (R + 7), sy = ly - sa * (R + 7);
+    ctx.fillStyle = '#ffd98a';
+    ctx.beginPath(); ctx.arc(sx, sy, 3.5, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,217,138,0.7)';
+    ctx.beginPath(); ctx.moveTo(sx + ca * 5, sy + sa * 5); ctx.lineTo(sx + ca * 12, sy + sa * 12); ctx.stroke();
+    // aim point
+    ctx.fillStyle = 'rgba(255,240,200,0.7)';
+    ctx.fillRect(Math.round(lx) - 3, Math.round(ly), 2, 1); ctx.fillRect(Math.round(lx) + 2, Math.round(ly), 2, 1);
+    ctx.fillRect(Math.round(lx), Math.round(ly) - 3, 1, 2); ctx.fillRect(Math.round(lx), Math.round(ly) + 2, 1, 2);
   }
 
   private drawLoupe(ctx: CanvasRenderingContext2D) {
     const [lx, ly] = this.loupe;
-    const zoom = 2;
+    const zoom = this.loupeZoom;
     const xf2: Xf = { ...this.xf, s: this.xf.s * zoom, cx: Math.round(zoom * this.xf.cx - (zoom - 1) * lx), cy: Math.round(zoom * this.xf.cy - (zoom - 1) * ly) };
     ctx.save();
     ctx.beginPath();
@@ -311,7 +483,7 @@ class Inspect extends BaseMinigame {
     ctx.clip();
     ctx.fillStyle = '#1a1612';
     ctx.fillRect(lx - LOUPE_R, ly - LOUPE_R, LOUPE_R * 2, LOUPE_R * 2);
-    drawXf(ctx, this.spr, xf2);
+    drawXf(ctx, this.hiOf(this.spr), xf2);
     for (const i of this.found) {
       const [x, y] = s2scr(xf2, this.centres[i][0], this.centres[i][1]);
       ctx.fillStyle = 'rgba(255,250,235,0.12)';
@@ -341,10 +513,33 @@ class Inspect extends BaseMinigame {
 
   protected drawOverlay(ctx: CanvasRenderingContext2D) {
     this.text('Final inspection', MW / 2, 12, { size: 10, align: 'center', color: COLORS.gold });
-    this.text('Look closely for pits, scratches and scale • click / Space to polish one • drag or edges to pan', MW / 2, 26, { size: 8, align: 'center', color: COLORS.paper });
+    this.text(this.tool === 'lamp'
+      ? (this.touchInput ? 'Lamp: tap to move the light • turn it with the dial • tap a glint inside it to polish • drag to pan' : 'Lamp: sweep the low light over the piece • turn it with Q/E, the wheel or the dial • click a glint to polish it')
+      : (this.touchInput ? 'Tap to move the loupe • tap a flaw inside it to polish • drag to pan' : 'Look closely for pits, scratches and scale • click / Space to polish one • drag or edges to pan'), MW / 2, 26, { size: 8, align: 'center', color: COLORS.paper });
     this.text(this.statusText(), 12, MH - 14, { size: 10, color: COLORS.paper });
     this.text(`Care ${Math.round(this.care * 100)}%`, 170, MH - 14, { size: 10, color: this.care > 0.85 ? COLORS.paper : COLORS.ok });
     if (this.finished) return;
+    // tool buttons
+    for (const t of ['loupe', 'lamp'] as const) {
+      const b = this.toolRect(t);
+      const on = this.tool === t;
+      this.panel(b.x, b.y, b.w, b.h, on ? 'rgba(150,100,40,0.92)' : this.overTool() === t ? 'rgba(70,50,36,0.9)' : COLORS.panel, on ? COLORS.gold : COLORS.panelEdge);
+      this.text(t === 'loupe' ? 'Loupe' : 'Lamp', b.x + b.w / 2, b.y + b.h / 2, { size: 10, align: 'center', color: on ? COLORS.cream : COLORS.paper });
+    }
+    if (this.tool === 'lamp') {
+      // angle dial
+      const a = this.mirrored ? Math.PI - this.lampAngle : this.lampAngle;
+      ctx.fillStyle = 'rgba(20,14,10,0.75)';
+      ctx.beginPath(); ctx.arc(DIAL[0], DIAL[1], DIAL_R + 3, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = this.dialDrag || this.overDial() ? COLORS.gold : '#a07a4a';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(DIAL[0], DIAL[1], DIAL_R, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = '#ffd98a';
+      ctx.beginPath(); ctx.moveTo(DIAL[0] - Math.cos(a) * DIAL_R * 0.85, DIAL[1] - Math.sin(a) * DIAL_R * 0.85); ctx.lineTo(DIAL[0] + Math.cos(a) * DIAL_R * 0.5, DIAL[1] + Math.sin(a) * DIAL_R * 0.5); ctx.stroke();
+      ctx.fillStyle = '#ffd98a';
+      ctx.beginPath(); ctx.arc(DIAL[0] - Math.cos(a) * DIAL_R * 0.85, DIAL[1] - Math.sin(a) * DIAL_R * 0.85, 3, 0, Math.PI * 2); ctx.fill();
+      this.text('light', DIAL[0], DIAL[1] + DIAL_R + 10, { size: 8, align: 'center', color: COLORS.paper });
+    }
     const r = this.finishRect();
     const ready = this.flawless || (this.visibleCount > 0 && this.found.size >= this.visibleCount);
     const glow = ready ? 0.5 + 0.5 * Math.sin(this.t * 4) : 0;
@@ -357,10 +552,12 @@ class Inspect extends BaseMinigame {
 export const inspectGame: MinigameDef = {
   id: 'inspect',
   name: 'Final Inspection',
-  controls: 'Move the loupe (mouse / touch / arrows), click or Space to polish a flaw, drag to pan, Enter or the button to finish.',
-  instructions: () => [
+  controls: 'Move the tool (mouse / touch / arrows); click or Space polishes a flaw; drag pans. Switch Loupe / Lamp with the buttons or L. Lamp: turn the light with Q / E, the mouse wheel or the dial. Enter or the button finishes.',
+  instructions: (env) => [
     'Take your time — there is no timer.',
     'Look the piece over with the loupe and polish away any pits, scratches or scale you spot.',
+    'Some flaws are too faint to see by eye. Switch to the inspection lamp: its low, raking light makes flaws glint'
+      + (env.difficulty >= 1 ? ' — but each one only shows when the light comes from the right side, so turn it as you sweep.' : '.'),
     'Marking clean metal costs a little care. Finish whenever you are content.',
   ],
   create: (env) => new Inspect(env),

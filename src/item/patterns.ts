@@ -152,6 +152,19 @@ export function engravingPaths(pattern: string, seed: number): Path[] {
       for (let i = 0; i < 7; i++) pts.push([T0 + (i / 6) * span, r.range(-0.5, 0.5)]);
       return [pts];
     }
+    case 'arabesque': {
+      const paths: Path[] = [
+        sampled(48, (k) => [T0 + k * span, 0.42 * Math.sin(k * Math.PI * 6)]),
+        sampled(48, (k) => [T0 + k * span, -0.42 * Math.sin(k * Math.PI * 6)]),
+      ];
+      // a small spiral in each eye of the interlace
+      for (let i = 0; i < 6; i++) {
+        const tc = T0 + ((i + 0.5) / 6) * span;
+        const dir = i % 2 ? 1 : -1;
+        paths.push(sampled(12, (k) => [tc + 0.016 * Math.cos(k * Math.PI * 3) * (1 - k), dir * 0.2 * Math.sin(k * Math.PI * 3) * (1 - k)]));
+      }
+      return paths;
+    }
     case 'petal': {
       const paths: Path[] = [];
       for (let i = 0; i < 8; i++) {
@@ -188,6 +201,9 @@ export const EMBLEM_BITMAPS: Record<string, string[]> = {
   crescent: ['...###.', '..##...', '.##....', '.##....', '.##....', '..##...', '...###.'],
   chalice: ['#######', '#######', '.#####.', '..###..', '...#...', '..###..', '.#####.'],
   comet: ['......#', '....##.', '..###..', '.###...', '####...', '###....', '.#.....'],
+  anvil: ['.......', '######.', '.######', '..###..', '..###..', '.#####.', '#######'],
+  sunburst: ['#..#..#', '.#.#.#.', '..###..', '#######', '..###..', '.#.#.#.', '#..#..#'],
+  meteor: ['#......', '.#.....', '..#.#..', '...###.', '..#####', '...###.', '....#..'],
 };
 
 // ---------------------------------------------------------------- inscription glyphs

@@ -10,7 +10,7 @@ import { displayName } from '../../item/factory';
 import type { Item } from '../../item/types';
 import { renderItem } from '../../render/itemRenderer';
 import { toCanvas } from '../../render/pixel';
-import { itemThumb, modal, tabs } from '../dom';
+import { fittedSprite, itemThumb, modal, tabs } from '../dom';
 import { openItem } from './inspect';
 import { damascusBadge } from './showcase';
 import { FAMILY_INFO, formatVisibility, NAMED_PATTERNS, PATTERN_COUNT, patternSpec, RARE_COLORS, rareColor } from '../../item/damascus';
@@ -43,7 +43,7 @@ export function openCollection(app: App, initial = 'mine') {
     mk('filter', 'Show', [['all', 'All'], ['fav', 'Favourites'], ['master', 'Masterpieces (85+)'], ['displayed', 'On display']]);
     mk('mat', 'Material', [['all', 'Any'], ...mats.map((x) => [x, mat(x).name] as [string, string])]);
     mk('trad', 'Tradition', [['all', 'Any'], ...TRADITIONS.map((x) => [x.id, x.name] as [string, string])]);
-    mk('cat', 'Type', [['all', 'Any'], ['sword', 'Swords'], ['dagger', 'Daggers'], ['shield', 'Shields']]);
+    mk('cat', 'Type', [['all', 'Any'], ['sword', 'Swords'], ['dagger', 'Daggers'], ['shield', 'Shields'], ['bow', 'Bows'], ['arrows', 'Arrows']]);
     const grid = el('div', { class: 'grid auto-grid' });
     body.append(bar, grid);
     function draw() {
@@ -98,10 +98,9 @@ export function openCollection(app: App, initial = 'mine') {
       ctx.fillStyle = spot; ctx.fillRect(cx - 70, base - 140, 140, 150);
       ctx.fillStyle = '#6a5040'; ctx.fillRect(cx - 22, base - 6, 44, 10);
       ctx.fillStyle = '#8a6a50'; ctx.fillRect(cx - 22, base - 6, 44, 2);
-      const img = toCanvas(renderItem(it));
-      const sc = Math.min(1, 120 / img.height, 60 / img.width) * (row === 0 ? 1 : 0.7);
-      const w = Math.floor(img.width * sc), h = Math.floor(img.height * sc);
-      ctx.drawImage(img, Math.round(cx - w / 2), base - 6 - h, w, h);
+      const fit = fittedSprite(it, 'front', 60 * (row === 0 ? 1 : 0.7), 120 * (row === 0 ? 1 : 0.7));
+      const img = toCanvas(fit.img, fit.scale);
+      ctx.drawImage(img, Math.round(cx - img.width / 2), base - 6 - img.height);
     });
     c.addEventListener('click', (e) => {
       const r = c.getBoundingClientRect();

@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "sim": "vitest run tests/balance.test.ts",
-    "e2e": "vite build && node scripts/e2e.mjs"
+    "e2e": "vite build && node scripts/e2e.mjs",
+    "e2e:mobile": "vite build && node scripts/e2e-mobile.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",

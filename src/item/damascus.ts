@@ -264,6 +264,8 @@ export const RARE_COLORS: RareColor[] = [
   { id: 'bloodmoon', name: 'Bloodmoon', hex: '#d0283e', pair: ['dragonsteel', 'iron'], chance: 0.01, blurb: 'Deep crimson layers that seem to drink the light.' },
   { id: 'abyssalteal', name: 'Abyssal Teal', hex: '#2fd6c8', pair: ['azuresteel', 'moonstone'], chance: 0.008, blurb: 'The cold, luminous teal of deep water.' },
   { id: 'voidviolet', name: 'Void Violet', hex: '#8a5cff', pair: ['silver', 'starmetal'], chance: 0.006, blurb: 'Violet layers flecked like the night between stars.' },
+  { id: 'mirage', name: 'Mirage', hex: '#5ad1ff', hex2: '#ffd36b', pair: ['crucible', 'sunbronze'], chance: 0.006, blurb: 'Blue running into gold, like heat over water.' },
+  { id: 'thunderhead', name: 'Thunderhead', hex: '#c8d2e8', hex2: '#56608a', pair: ['meteoric', 'steel'], chance: 0.005, blurb: 'Storm-grey bands with a pale silver lining.' },
   { id: 'aurora', name: 'Aurora', hex: '#7cffc4', hex2: '#b07cff', pair: ['dragonsteel', 'starmetal'], chance: 0.004, blurb: 'Shifting green-to-violet bands. Almost never seen.' },
 ];
 

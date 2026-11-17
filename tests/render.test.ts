@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { createDraft, cloneItem } from '../src/item/factory';
 import { refreshDerived } from '../src/item/finalize';
-import { renderItem, clearRenderCache } from '../src/render/itemRenderer';
+import { renderItem, renderItemAt, clearRenderCache, RENDER_SCALE, spriteScale, bladeLayout, blemishPixel } from '../src/render/itemRenderer';
+import { CATEGORY_INFO } from '../src/item/factory';
+import { downscaled } from '../src/render/pixel';
 import { sheet, writePng } from './helpers/png';
 import type { Item } from '../src/item/types';
 
@@ -44,6 +46,37 @@ describe('procedural renderer', () => {
   it('different parameters → different sprites', () => {
     const hashes = SAMPLES().map((i) => renderItem(i).hash());
     expect(new Set(hashes).size).toBe(hashes.length);
+  });
+  it('draws current pieces at RENDER_SCALE and legacy pieces at 1x', () => {
+    for (const it of SAMPLES()) {
+      const [W, H] = CATEGORY_INFO[it.category].size;
+      const hi = renderItem(it), work = renderItemAt(it, 'front', 1);
+      expect(spriteScale(it)).toBe(RENDER_SCALE);
+      expect([hi.w, hi.h]).toEqual([W * RENDER_SCALE, H * RENDER_SCALE]);
+      expect([work.w, work.h]).toEqual([W, H]);
+      // same silhouette at both scales: the hi-res sprite covers about RENDER_SCALE² as many pixels
+      const count = (im: typeof hi) => { let n = 0; for (let k = 3; k < im.data.length; k += 4) if (im.data[k] > 0) n++; return n; };
+      const ratio = count(hi) / count(work);
+      expect(ratio).toBeGreaterThan(RENDER_SCALE * RENDER_SCALE * 0.72);
+      expect(ratio).toBeLessThan(RENDER_SCALE * RENDER_SCALE * 1.15);
+      for (const v of ['back', 'profile'] as const) expect(renderItem(it, v).w).toBe(W * RENDER_SCALE);
+      const old = { ...it, version: 1 };
+      expect(spriteScale(old)).toBe(1);
+      expect(renderItem(old).w).toBe(W);
+      expect(renderItemAt(old, 'front', 2).w).toBe(W);
+    }
+  });
+  it('maps blade-local points consistently at every scale', () => {
+    const it = SAMPLES()[0];
+    it.blemishes = [{ t: 0.4, u: 0.2, kind: 'pit' }];
+    const [x1, y1] = blemishPixel(it, 0.4, 0.2), [x2, y2] = blemishPixel(it, 0.4, 0.2, 2);
+    expect(Math.abs(x2 - x1 * 2)).toBeLessThanOrEqual(2);
+    expect(Math.abs(y2 - y1 * 2)).toBeLessThanOrEqual(2);
+    expect(bladeLayout(it).H).toBe(CATEGORY_INFO.sword.size[1]);
+    const img = renderItem(it), small = downscaled(img, 0.4);
+    expect(small.w).toBe(Math.floor(img.w * 0.4));
+    let n = 0; for (let k = 3; k < small.data.length; k += 4) if (small.data[k] > 0) n++;
+    expect(n).toBeGreaterThan(100);
   });
   it('writes a sample sheet when SHEET is set', () => {
     if (!process.env.SHEET) return;

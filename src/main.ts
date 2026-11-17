@@ -12,8 +12,10 @@ import { portrait } from './ui/portrait';
 
 function unlockAudio() {
   const go = () => { audio.unlock(); };
-  window.addEventListener('pointerdown', go, { once: false });
-  window.addEventListener('keydown', go, { once: false });
+  // Several gesture types: some mobile browsers only let audio start from touchend or click.
+  for (const ev of ['pointerdown', 'touchend', 'click', 'keydown']) window.addEventListener(ev, go, { passive: true });
+  // Go quiet when the game is backgrounded (a locked phone, another tab), and come back with it.
+  document.addEventListener('visibilitychange', () => { if (document.hidden) audio.suspend(); else void audio.unlock(); });
 }
 
 function start(state: GameState, fresh: boolean) {
@@ -52,7 +54,7 @@ function title() {
         screen.remove();
         start(s, true);
       }, saved ? '' : 'primary')),
-    el('p', { class: 'small', style: { opacity: '0.6' } }, 'Mouse, keyboard and touch supported · Sound is synthesised live — click to enable audio'),
+    el('p', { class: 'small', style: { opacity: '0.6' } }, 'Mouse, keyboard and touch supported · Sound is synthesised live — tap or click to enable audio'),
   );
   root.append(screen);
 }

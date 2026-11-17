@@ -118,3 +118,8 @@ export function el<K extends keyof HTMLElementTagNameMap>(
   }
   return e;
 }
+
+/** True on devices whose main pointer is a finger (phones, tablets). */
+export function isTouch(): boolean {
+  try { return typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia('(pointer: coarse)').matches; } catch { return false; }
+}

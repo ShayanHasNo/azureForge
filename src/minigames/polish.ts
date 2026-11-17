@@ -126,7 +126,8 @@ class Polish extends BaseMinigame {
     this.sl = env.item.shield ? shieldLayout(env.item) : { cx: this.W / 2, cy: this.H / 2, rx: this.W * 0.4, ry: this.H * 0.4 };
     // ---- view
     if (this.isShield) {
-      this.xf = { cx: 240, cy: 140, s: 2, rot: false, W: this.W, H: this.H };
+      // a long piece without a blade (a bow stave) is laid on its side
+      this.xf = { cx: 240, cy: 140, s: 2, rot: this.H > this.W * 1.6, W: this.W, H: this.H };
       this.pieceLen = this.sl.ry * 2;
     } else {
       const lay = bladeLayout(env.item);
@@ -228,8 +229,7 @@ class Polish extends BaseMinigame {
   private doneRect() { return { x: MW - 96, y: MH - 40, w: 84, h: 20 }; }
   private overDone(): boolean {
     const [x, y] = this.uiPointer();
-    const r = this.doneRect();
-    return x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
+    return this.hits(this.doneRect(), x, y);
   }
   private zoneAtSprite(x: number, y: number): number {
     const ix = Math.round(x), iy = Math.round(y);
@@ -727,7 +727,7 @@ class Polish extends BaseMinigame {
     ctx.fillRect(20, 72, MW - 40, 140);
     ctx.fillStyle = 'rgba(0,0,0,0.25)';
     ctx.fillRect(20, 210, MW - 40, 2);
-    this.drawImg(ctx, this.spr);
+    this.drawImg(ctx, this.hiOf(this.spr));
     this.buildOverlay();
     this.drawImg(ctx, this.overlay);
     // zone ticks

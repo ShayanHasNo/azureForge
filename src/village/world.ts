@@ -31,6 +31,8 @@ export const MERCHANTS: Merchant[] = [
         { id: 'leather', price: price('leather'), stock: 8 }, { id: 'blackleather', price: price('blackleather'), stock: 5 }, { id: 'quartz', price: price('quartz'), stock: 4 },
         { id: 'garnet', price: price('garnet', 1.1), stock: 2 }, { id: 'silver', price: price('silver', 1.1), stock: 2 },
       ];
+      lines.push({ id: 'ash', price: price('ash'), stock: 6 }, { id: 'hickory', price: price('hickory'), stock: 4 }, { id: 'rawhide', price: price('rawhide'), stock: 5 }, { id: 'flint', price: price('flint'), stock: 4 });
+      if (s.reputation >= 3) lines.push({ id: 'steel', price: price('steel'), stock: 5 }, { id: 'thickhide', price: price('thickhide'), stock: 4 });
       if (s.reputation >= 10) lines.push({ id: 'azuresteel', price: price('azuresteel'), stock: 3 });
       return lines;
     },
@@ -46,8 +48,9 @@ export const MERCHANTS: Merchant[] = [
         { id: 'bronze', price: price('bronze', 0.8), stock: 6 }, { id: 'bone', price: price('bone'), stock: 4 }, { id: 'slate', price: price('slate'), stock: 6 },
         { id: 'riverstone', price: price('riverstone'), stock: 6 }, { id: 'azuresteel', price: price('azuresteel'), stock: 2 },
       ];
+      lines.push({ id: 'steel', price: price('steel', 0.9), stock: 4 }, { id: 'oxhorn', price: price('oxhorn'), stock: 3 }, { id: 'sinew', price: price('sinew'), stock: 5 }, { id: 'rawhide', price: price('rawhide', 0.9), stock: 5 }, { id: 'thickhide', price: price('thickhide'), stock: 3 });
       if (r >= 1) lines.push({ id: 'obsidian', price: price('obsidian'), stock: 3 });
-      if (r >= 2) lines.push({ id: 'emberstone', price: price('emberstone'), stock: 1 });
+      if (r >= 2) lines.push({ id: 'emberstone', price: price('emberstone'), stock: 1 }, { id: 'sunbronze', price: price('sunbronze'), stock: 2 });
       return lines;
     },
   },
@@ -64,6 +67,7 @@ export const MERCHANTS: Merchant[] = [
       ];
       if (r >= 1) lines.push({ id: 'starmetal', price: price('starmetal'), stock: 1 + Math.min(2, r - 1) });
       if (r >= 2) lines.push({ id: 'starshard', price: price('starshard'), stock: 1 });
+      if (r >= 3) lines.push({ id: 'meteoric', price: price('meteoric'), stock: 1 });
       return lines;
     },
   },
@@ -77,7 +81,35 @@ export const MERCHANTS: Merchant[] = [
         { id: 'gardenglass', price: price('gardenglass', r >= 2 ? 0.9 : 1), stock: 1 + Math.min(3, r) }, { id: 'birch', price: price('birch'), stock: 6 },
         { id: 'jade', price: price('jade'), stock: 2 }, { id: 'amber', price: price('amber'), stock: 2 },
       ];
-      if (r >= 1) lines.push({ id: 'willowglass', price: price('willowglass'), stock: 2 });
+      if (r >= 1) lines.push({ id: 'willowglass', price: price('willowglass'), stock: 2 }, { id: 'bamboo', price: price('bamboo'), stock: 2 });
+      return lines;
+    },
+  },
+  {
+    id: 'fletcher', name: 'Old Teodor\'s Archery Bench', npc: 'teodor', schedule: 'Moondays, Windsdays and Firedays, mornings and afternoons.',
+    blurb: 'Seasoned bow staves, arrow shafts, feathers and sinew from an old gate-guard who still shoots at dawn.',
+    open: (s) => ['Moonday', 'Windsday', 'Fireday'].includes(weekday(s.day)) && (phase(s) === 'morning' || phase(s) === 'afternoon'),
+    stock: (s) => {
+      const r = relLevel(s, 'teodor');
+      const lines: StockLine[] = [
+        { id: 'ash', price: price('ash'), stock: 6 }, { id: 'elm', price: price('elm'), stock: 4 }, { id: 'hickory', price: price('hickory'), stock: 4 },
+        { id: 'yew', price: price('yew', r >= 2 ? 0.85 : 1), stock: 2 + Math.min(2, r) }, { id: 'cedar', price: price('cedar'), stock: 10 },
+        { id: 'goose', price: price('goose'), stock: 8 }, { id: 'turkey', price: price('turkey'), stock: 5 }, { id: 'sinew', price: price('sinew'), stock: 4 }, { id: 'linenthread', price: price('linenthread'), stock: 6 },
+      ];
+      if (r >= 1) lines.push({ id: 'osage', price: price('osage'), stock: 2 });
+      return lines;
+    },
+  },
+  {
+    id: 'mill', name: 'Maren\'s Mill Loft', npc: 'maren', schedule: 'Every day except Sunday, mornings and afternoons.',
+    blurb: 'Linen, wool, thread and cord from the mill loft — everything a quilted coat needs.',
+    open: (s) => weekday(s.day) !== 'Sunday' && (phase(s) === 'morning' || phase(s) === 'afternoon'),
+    stock: (s) => {
+      const r = relLevel(s, 'maren');
+      const lines: StockLine[] = [
+        { id: 'linen', price: price('linen'), stock: 10 }, { id: 'wool', price: price('wool'), stock: 8 }, { id: 'linenthread', price: price('linenthread'), stock: 8 },
+        { id: 'hemp', price: price('hemp'), stock: 6 }, { id: 'canvas', price: price('canvas', r >= 2 ? 0.85 : 1), stock: 4 }, { id: 'oxhorn', price: price('oxhorn'), stock: 2 },
+      ];
       return lines;
     },
   },
@@ -87,12 +119,12 @@ export const MERCHANTS: Merchant[] = [
     open: (s) => isSeasonalMarket(s.day) && phase(s) !== 'night',
     stock: (s) => {
       const season = seasonOf(s.day);
-      const base: StockLine[] = [{ id: 'ebony', price: price('ebony'), stock: 2 }, { id: 'sapphire', price: price('sapphire'), stock: 1 }];
+      const base: StockLine[] = [{ id: 'ebony', price: price('ebony'), stock: 2 }, { id: 'sapphire', price: price('sapphire'), stock: 1 }, { id: 'crucible', price: price('crucible'), stock: 2 }, { id: 'buffalohorn', price: price('buffalohorn'), stock: 2 }, { id: 'silk', price: price('silk'), stock: 3 }, { id: 'velvet', price: price('velvet'), stock: 2 }];
       const by: Record<string, StockLine[]> = {
-        Spring: [{ id: 'jade', price: price('jade', 0.8), stock: 3 }, { id: 'amber', price: price('amber', 0.8), stock: 3 }, { id: 'birch', price: 1, stock: 6 }],
-        Summer: [{ id: 'garnet', price: price('garnet', 0.8), stock: 3 }, { id: 'copper', price: 3, stock: 10 }, { id: 'gardenglass', price: price('gardenglass', 0.9), stock: 2 }],
-        Autumn: [{ id: 'antler', price: price('antler', 0.8), stock: 3 }, { id: 'amber', price: price('amber', 0.7), stock: 3 }, { id: 'bronze', price: 4, stock: 8 }],
-        Winter: [{ id: 'moonpearl', price: price('moonpearl', 0.8), stock: 3 }, { id: 'silver', price: price('silver', 0.85), stock: 4 }, { id: 'starshard', price: price('starshard', 0.9), stock: 1 }],
+        Spring: [{ id: 'jade', price: price('jade', 0.8), stock: 3 }, { id: 'amber', price: price('amber', 0.8), stock: 3 }, { id: 'birch', price: 1, stock: 6 }, { id: 'bamboo', price: price('bamboo', 0.85), stock: 4 }],
+        Summer: [{ id: 'garnet', price: price('garnet', 0.8), stock: 3 }, { id: 'copper', price: 3, stock: 10 }, { id: 'gardenglass', price: price('gardenglass', 0.9), stock: 2 }, { id: 'sunbronze', price: price('sunbronze', 0.9), stock: 3 }, { id: 'bamboo', price: price('bamboo'), stock: 3 }],
+        Autumn: [{ id: 'antler', price: price('antler', 0.8), stock: 3 }, { id: 'amber', price: price('amber', 0.7), stock: 3 }, { id: 'bronze', price: 4, stock: 8 }, { id: 'sunbronze', price: price('sunbronze'), stock: 2 }, { id: 'osage', price: price('osage', 0.9), stock: 2 }, { id: 'pheasant', price: price('pheasant'), stock: 4 }],
+        Winter: [{ id: 'moonpearl', price: price('moonpearl', 0.8), stock: 3 }, { id: 'silver', price: price('silver', 0.85), stock: 4 }, { id: 'starshard', price: price('starshard', 0.9), stock: 1 }, { id: 'wool', price: 1, stock: 8 }],
       };
       return [...base, ...by[season]];
     },
@@ -120,20 +152,23 @@ const vr = (s: GameState, id: string) => seededRng(hash32(s.worldSeed, s.day, vi
 export const LOCATIONS: Location[] = [
   {
     id: 'riverbank', name: 'The Riverbank', blurb: 'Willows, kingfishers and smooth stones.',
-    yields: 'Always 2–3 riverstones; usually a quartz pebble; copper nuggets after rain.',
+    yields: 'Always 2–3 riverstones and a stalk or two of river cane; usually a quartz pebble; often goose feathers or a flint nodule; copper nuggets and hemp after rain.',
     discover: { hint: 'Known from the start.', check: () => true },
     available: () => ({ ok: true }),
     visit: (s) => {
       const r = vr(s, 'riverbank');
       const m: Record<string, number> = { riverstone: r.int(2, 3) };
       if (r.chance(0.75)) m.quartz = 1;
-      if (weatherOf(s) === 'rain') m.copper = 2;
+      if (weatherOf(s) === 'rain') { m.copper = 2; m.hemp = 1; }
+      m.rivercane = r.int(1, 2);
+      if (r.chance(0.5)) m.goose = 2;
+      if (r.chance(0.4)) m.flint = 1;
       return { materials: m, text: weatherOf(s) === 'rain' ? 'Rain has washed copper nuggets into the shallows.' : 'The river is low and clear. Smooth stones gleam in the shallows.' };
     },
   },
   {
     id: 'woods', name: 'The Whispering Woods', blurb: 'Birch groves and old amber trees.',
-    yields: 'Always birch; amber most visits; antler in autumn; a gardenglass seedling in the hollow on every third visit.',
+    yields: 'Always birch and ash; amber and a yew stave most visits; elm in spring and summer; antler and turkey or pheasant feathers in autumn; a gardenglass seedling in the hollow on every third visit.',
     discover: { hint: 'Known from the start.', check: () => true },
     available: () => ({ ok: true }),
     visit: (s) => {
@@ -142,16 +177,20 @@ export const LOCATIONS: Location[] = [
       if (r.chance(0.7)) m.amber = 1;
       if (seasonOf(s.day) === 'Autumn') m.antler = 1;
       if ((visits(s, 'woods') + 1) % 3 === 0) m.gardenglass = 1;
+      m.ash = 1;
+      if (r.chance(0.6)) m.yew = 1;
+      if (['Spring', 'Summer'].includes(seasonOf(s.day))) m.elm = 1;
+      if (seasonOf(s.day) === 'Autumn') { m.turkey = 2; if (r.chance(0.5)) m.pheasant = 1; }
       return { materials: m, text: m.gardenglass ? 'In the hollow, a sliver of green crystal has grown from the roots of a birch.' : 'Birch leaves whisper overhead. Amber beads glow on an old trunk.' };
     },
   },
   {
     id: 'quarry', name: 'The Old Quarry', blurb: 'Grey terraces and rusty seams.',
-    yields: 'Always 2 iron ore and 2 slate; a garnet on every second visit.',
+    yields: 'Always 2 iron ore, 2 slate and a flint nodule; a garnet on every second visit.',
     discover: { hint: 'Known from the start.', check: () => true },
     available: () => ({ ok: true }),
     visit: (s) => {
-      const m: Record<string, number> = { iron: 2, slate: 2 };
+      const m: Record<string, number> = { iron: 2, slate: 2, flint: 1 };
       if ((visits(s, 'quarry') + 1) % 2 === 0) m.garnet = 1;
       return { materials: m, text: m.garnet ? 'A dark red garnet glints in a split of slate.' : 'You chip iron ore from a rusty seam.' };
     },
@@ -171,17 +210,19 @@ export const LOCATIONS: Location[] = [
   },
   {
     id: 'lake', name: 'Moonlit Lake', blurb: 'A still mountain lake that shimmers at night.',
-    yields: 'In the evening or at night: 1–2 moonstone and a moonpearl.',
+    yields: 'In the evening or at night: 1–2 moonstone, a moonpearl, river cane and goose feathers; now and then a swan feather.',
     discover: { hint: 'Befriend Lyra, or earn 8 reputation.', check: (s) => relLevel(s, 'lyra') >= 1 || s.reputation >= 8 },
     available: (s) => (phase(s) === 'evening' || phase(s) === 'night' ? { ok: true } : { ok: false, why: 'The lake only shimmers in the evening and at night.' }),
     visit: (s) => {
       const r = vr(s, 'lake');
-      return { materials: { moonstone: r.int(1, 2), moonpearl: 1 }, text: 'Moonlight pools on the water. Pale stones gleam beneath the surface.' };
+      const m: Record<string, number> = { moonstone: r.int(1, 2), moonpearl: 1, rivercane: 1, goose: 2 };
+      if (r.chance(0.35)) m.swan = 1;
+      return { materials: m, text: 'Moonlight pools on the water. Pale stones gleam beneath the surface.' };
     },
   },
   {
     id: 'ridge', name: 'Starfall Ridge', blurb: 'A high ridge where stars fall on clear nights.',
-    yields: 'At night in clear or cloudy weather: 1–2 star-metal; a starshard in clear weather.',
+    yields: 'At night in clear or cloudy weather: 1–2 star-metal; a starshard in clear weather; on a lucky clear night, a lump of meteoric iron.',
     discover: { hint: 'Become good friends with Lyra (friendship 2), or earn 22 reputation.', check: (s) => relLevel(s, 'lyra') >= 2 || s.reputation >= 22 },
     available: (s) => {
       if (phase(s) !== 'night') return { ok: false, why: 'Stars only fall at night.' };
@@ -191,18 +232,19 @@ export const LOCATIONS: Location[] = [
     visit: (s) => {
       const r = vr(s, 'ridge');
       const m: Record<string, number> = { starmetal: r.int(1, 2) };
-      if (weatherOf(s) === 'clear') m.starshard = 1;
+      if (weatherOf(s) === 'clear') { m.starshard = 1; if (r.chance(0.3)) m.meteoric = 1; }
       return { materials: m, text: 'A streak of light — and a smoking fragment of star-metal in the heather.' };
     },
   },
   {
     id: 'vents', name: 'The Ember Vents', blurb: 'Warm fissures in the high pass.',
-    yields: 'Always 1 dragonsteel ore and 2 obsidian; an emberstone on every second visit.',
+    yields: 'Always 1 dragonsteel ore and 2 obsidian; an emberstone on every second visit; an old cake of crucible steel on every fourth.',
     discover: { hint: 'Befriend Brannoc (friendship 2), or earn 18 reputation.', check: (s) => relLevel(s, 'brannoc') >= 2 || s.reputation >= 18 },
     available: (s) => (seasonOf(s.day) === 'Winter' && weatherOf(s) === 'snow' ? { ok: false, why: 'The pass is snowed in today.' } : { ok: true }),
     visit: (s) => {
       const m: Record<string, number> = { dragonsteel: 1, obsidian: 2 };
       if ((visits(s, 'vents') + 1) % 2 === 0) m.emberstone = 1;
+      if ((visits(s, 'vents') + 1) % 4 === 0) m.crucible = 1;
       return { materials: m, text: 'Heat shimmers from the fissures. Dark, ember-veined ore lies at the edges.' };
     },
   },

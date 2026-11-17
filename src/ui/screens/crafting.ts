@@ -3,7 +3,7 @@
 
 import type { App } from '../../app';
 import { audio } from '../../audio/audio';
-import { el } from '../../core/util';
+import { el, isTouch } from '../../core/util';
 import { CraftSession } from '../../crafting/session';
 import { Control, StageCtx } from '../../crafting/stages';
 import { compatibility, hasMat, mat, masteryLevel } from '../../data/materials';
@@ -11,12 +11,12 @@ import { OptionDef } from '../../data/options';
 import { STAGE_INFO, StageId, TRADITIONS } from '../../data/traditions';
 import { UPGRADES } from '../../data/workshop';
 import { recordCompletedItem, traditionUnlockable } from '../../game/progress';
-import { CATEGORY_INFO, cloneItem } from '../../item/factory';
+import { CATEGORY_INFO, cloneItem, CRAFTABLE } from '../../item/factory';
 import { computeStats, HEADLINE_STATS, physicsBalance, STAT_LABELS } from '../../item/stats';
 import type { Category, ItemStats } from '../../item/types';
 import { MINIGAMES } from '../../minigames';
 import { gradeOf, MinigameInstance, QUIRKS } from '../../minigames/types';
-import { renderItem, View } from '../../render/itemRenderer';
+import { renderItem, renderItemAt, spriteScale, View } from '../../render/itemRenderer';
 import { toCanvas } from '../../render/pixel';
 import { btn, confirmDialog, modal, sfxClick, statRow, toast } from '../dom';
 import { Showcase } from '../showcase';
@@ -32,13 +32,17 @@ export function openNewPiece(app: App) {
     m.body.innerHTML = '';
     m.body.append(el('h3', {}, 'What will you make?'));
     const cats = el('div', { class: 'grid cols-3' });
-    const catReq: Record<Category, string | null> = { sword: null, dagger: 'smallanvil', shield: 'shieldframe' };
-    for (const c of ['sword', 'dagger', 'shield'] as Category[]) {
+    const catReq: Record<Category, string | null> = { sword: null, dagger: 'smallanvil', shield: 'shieldframe', bow: 'tillertree', arrows: 'fletchjig', armor: 'armourstand' };
+    const catBlurb: Record<Category, string> = {
+      sword: 'Balance, durability, ornament, appeal.', dagger: 'Compact, detailed, collectible.', shield: 'Coverage, integrity, weight, surface.',
+      bow: 'Draw weight, cast, an even tiller. Four ways to build one.', arrows: 'A matched set of six: straight, true and alike.', armor: 'Protection against cut, thrust and blow. Six ways to make it.',
+    };
+    for (const c of CRAFTABLE) {
       const req = catReq[c];
       const locked = req && !s.upgrades.includes(req);
       const card = el('div', { class: `card click ${category === c ? 'sel' : ''} ${locked ? 'locked' : ''}`, tabindex: '0', role: 'button' },
         el('b', {}, CATEGORY_INFO[c].name),
-        el('div', { class: 'small muted' }, locked ? `Needs the ${UPGRADES.find((u) => u.id === req)?.name} (Workshop → Tools).` : c === 'sword' ? 'Balance, durability, ornament, appeal.' : c === 'dagger' ? 'Compact, detailed, collectible.' : 'Coverage, integrity, weight, surface.'),
+        el('div', { class: 'small muted' }, locked ? `Needs the ${UPGRADES.find((u) => u.id === req)?.name} (Workshop → Tools).` : catBlurb[c]),
       );
       card.onclick = () => { if (locked) return toast('Buy the tool at your workbench first.'); sfxClick(); category = c; render(); };
       cats.append(card);
@@ -49,7 +53,7 @@ export function openNewPiece(app: App) {
       const ok = s.traditions.includes(t.id) || traditionUnlockable(t, s);
       const card = el('div', { class: `card click ${trad === t.id ? 'sel' : ''} ${ok ? '' : 'locked'}`, tabindex: '0', role: 'button', style: { borderLeft: `5px solid ${t.color}` } },
         el('b', {}, t.name), el('div', { class: 'small' }, ok ? t.philosophy : `🔒 ${t.unlock.hint}`),
-        ok ? el('div', { class: 'small muted' }, `Stages: ${t.stages.filter((x) => x !== 'appraisal').map((x) => STAGE_INFO[x].name).join(' → ')}`) : null,
+        ok ? el('div', { class: 'small muted' }, ['bow', 'arrows', 'armor'].includes(category) ? 'The stages follow the construction you choose; the tradition sets the difficulty and the decorative language.' : `Stages: ${t.stages.filter((x) => x !== 'appraisal').map((x) => STAGE_INFO[x].name).join(' → ')}`) : null,
       );
       card.onclick = () => { if (!ok) return; sfxClick(); trad = t.id; render(); };
       grid.append(card);
@@ -88,7 +92,16 @@ export function openCrafting(app: App, session: CraftSession | null) {
     const r = stageArea.getBoundingClientRect();
     showcase.setBox(Math.max(160, Math.floor(r.width)), Math.max(160, Math.floor(r.height)));
   };
-  const ro = new ResizeObserver(fitShowcase);
+  /** Size the minigame canvas to the largest 16:9 box the stage really has (not the window). */
+  const fitMinigame = () => {
+    const c = stageArea.querySelector('canvas.mg') as HTMLCanvasElement | null;
+    if (!c) return;
+    const r = stageArea.getBoundingClientRect();
+    const w = Math.max(160, Math.floor(Math.min(r.width - 6, (r.height - 6) * (16 / 9))));
+    c.style.width = `${w}px`;
+    c.style.height = `${Math.round((w * 9) / 16)}px`;
+  };
+  const ro = new ResizeObserver(() => { fitShowcase(); fitMinigame(); });
   ro.observe(stageArea);
   let mg: MinigameInstance | null = null;
   let baseline: ItemStats = computeStats(ses.item);
@@ -236,6 +249,7 @@ export function openCrafting(app: App, session: CraftSession | null) {
       el('div', { class: 'panel-body' },
         ...lines.map((l) => el('p', {}, l)),
         el('p', { class: 'small muted' }, `Controls: ${def.controls}`),
+        isTouch() && window.innerHeight > window.innerWidth ? el('p', { class: 'small muted' }, 'Tip: turn your phone sideways for a bigger view of the work.') : null,
         el('p', {}, el('span', { class: 'tag gold' }, `Difficulty: ${difficultyName(difficulty)}`), ' ', hasMat(ses.item.materials.primary) ? el('span', { class: 'tag' }, mat(ses.item.materials.primary).name) : null, quirk ? el('span', { class: 'tag cool' }, `Quirk: ${QUIRKS[quirk]}`) : null),
         s.settings.difficulty !== 'relaxed' ? el('p', { class: 'small muted' }, 'Prefer something gentler? Relaxed crafting mode is in Settings — it keeps every mechanic but widens all tolerances.') : null,
       ),
@@ -257,7 +271,10 @@ export function openCrafting(app: App, session: CraftSession | null) {
       audio,
       settings: { reducedMotion: s.settings.reducedMotion, highContrast: s.settings.highContrast, colorblind: s.settings.colorblind },
       upgrades: s.upgrades,
-      sprite: (it: any, v: View = 'front') => toCanvas(renderItem(it, v)),
+      // Minigames work on the 1x "working" sprite, whose pixels are the logical units of the item's geometry.
+      sprite: (it: any, v: View = 'front') => toCanvas(renderItemAt(it, v, 1)),
+      spriteHi: (it: any, v: View = 'front') => toCanvas(renderItem(it, v)),
+      renderScale: spriteScale(ses.item),
     };
   }
 
@@ -266,8 +283,11 @@ export function openCrafting(app: App, session: CraftSession | null) {
     stageArea.innerHTML = '';
     const canvas = el('canvas', { class: 'mg', tabindex: '0', 'aria-label': `${def.name} minigame` });
     stageArea.append(canvas);
+    root.classList.add('playing'); // small screens give the minigame the whole screen
+    fitMinigame();
+    requestAnimationFrame(fitMinigame);
     const status = el('p', { class: 'small' }, 'Working…');
-    side.querySelector('.panel-body')?.prepend(el('div', { class: 'card' }, el('b', {}, def.name), status, el('p', { class: 'small muted' }, def.controls)));
+    side.querySelector('.panel-body')?.prepend(el('div', { class: 'card mg-status' }, el('b', {}, def.name), status, el('p', { class: 'small muted' }, def.controls)));
     canvas.focus();
     side.querySelectorAll('input, select, textarea, button').forEach((n) => ((n as HTMLInputElement).disabled = true));
     const inst = def.create({ ...env, canvas, onStatus: (t) => (status.textContent = t) });
@@ -276,6 +296,7 @@ export function openCrafting(app: App, session: CraftSession | null) {
     inst.start().then((res) => {
       inst.destroy();
       mg = null;
+      root.classList.remove('playing');
       (audio as any).stopAllLoops?.();
       ses.applyResult(res, env.difficulty);
       ses.persist();
@@ -328,7 +349,7 @@ export function openCrafting(app: App, session: CraftSession | null) {
 // ---------------------------------------------------------------- generic control renderers
 interface CtlEnv { state: App['state']; preview: () => void }
 function renderControl(c: Control, disabled: boolean, changed: () => void, env: CtlEnv): HTMLElement {
-  const wrap = el('div', { class: 'ctl' });
+  const wrap = el('div', { class: 'ctl', 'data-key': c.key });
   const lbl = (t: string) => el('div', { class: 'lbl' }, t);
   const help = (t?: string): Node | string => (t ? el('div', { class: 'help' }, t) : '');
   switch (c.kind) {
@@ -414,6 +435,9 @@ function renderControl(c: Control, disabled: boolean, changed: () => void, env: 
         card.onclick = () => { if (!enough) { toast(`You need ${c.need} ${m.name} (have ${have}). ${m.source}`); return; } sfxClick(); c.set(id); changed(); };
         list.append(card);
       }
+      // say what else would do, and where to find it, when the player owns few of the options
+      const missing = c.materials.filter((id) => hasMat(id) && (st?.materials?.[id] ?? 0) < c.need && c.get() !== id);
+      if (missing.length && list.childElementCount <= 2) list.append(el('p', { class: 'small muted', style: { gridColumn: '1 / -1', margin: '2px 0 0' } }, `Also works: ${missing.slice(0, 6).map((id) => mat(id).name.toLowerCase()).join(', ')}${missing.length > 6 ? '…' : ''}. ${mat(missing[0]).name}: ${mat(missing[0]).source}`));
       if (!list.childElementCount) list.append(el('p', { class: 'muted small' }, 'Nothing suitable in storage. Visit the village or explore.'));
       wrap.append(list, help(c.help));
       // compatibility hint between primary and secondary

@@ -1,6 +1,6 @@
 import type { App } from '../../app';
 import { audio } from '../../audio/audio';
-import { el } from '../../core/util';
+import { el, isTouch } from '../../core/util';
 import { deleteSave, deserialize, serialize } from '../../game/save';
 import { btn, confirmDialog, modal, toast } from '../dom';
 
@@ -51,15 +51,24 @@ export function openSettings(app: App) {
   };
   m.body.append(el('div', { class: 'row' },
     btn('Save now', () => { app.save(); toast('Saved.'); }),
-    btn('Export save', () => {
+    btn('Export save', async () => {
+      const name = `quiet-forge-day${app.state.day}.json`;
       const blob = new Blob([serialize(app.state)], { type: 'application/json' });
-      const a = el('a', { href: URL.createObjectURL(blob), download: `quiet-forge-day${app.state.day}.json` });
+      // Phones: hand the file to the share sheet (Save to Files, AirDrop…), where a download link is unreliable.
+      try {
+        const file = new File([blob], name, { type: 'application/json' });
+        const nav = navigator as Navigator & { canShare?: (d: unknown) => boolean };
+        if (isTouch() && nav.canShare?.({ files: [file] })) { await nav.share({ files: [file], title: 'The Quiet Forge save' }); return; }
+      } catch (e) {
+        if ((e as Error)?.name === 'AbortError') return; // the player closed the share sheet
+      }
+      const a = el('a', { href: URL.createObjectURL(blob), download: name });
       a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 1000);
     }),
     btn('Import save', () => fileIn.click()),
     btn('Delete save', () => confirmDialog('Delete everything?', 'This permanently erases your workshop and every creation in this browser. Export first if you want to keep them.', 'Delete', () => { deleteSave(); location.reload(); }, true), 'danger'),
     fileIn));
-  m.body.append(el('h3', {}, 'Controls'), el('p', { class: 'small' }, 'Workshop: A/D or ←/→ to walk, E/Enter to use a station, or click/tap anything. Shortcuts: F craft · I materials · J journal · C collection · V village · U workshop · R rest · Esc settings/close.'));
+  m.body.append(el('h3', {}, 'Controls'), el('p', { class: 'small' }, 'Touch: tap the floor to walk and a station to use it; the menu along the bottom opens everything else. Every minigame can be played by touch.'), el('p', { class: 'small' }, 'Keyboard & mouse — Workshop: A/D or ←/→ to walk, E/Enter to use a station, or click/tap anything. Shortcuts: F craft · I materials · J journal · C collection · V village · U workshop · R rest · Esc settings/close.'));
   m.foot.append(btn('Done', () => m.close(), 'primary'));
 }

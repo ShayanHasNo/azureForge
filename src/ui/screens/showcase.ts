@@ -5,7 +5,7 @@ import { audio } from '../../audio/audio';
 import { el } from '../../core/util';
 import { formatVisibility, rareColor } from '../../item/damascus';
 import { displayName } from '../../item/factory';
-import type { Item } from '../../item/types';
+import { isLegacy, type Item } from '../../item/types';
 import { listShowcase, postToShowcase, withdrawFromShowcase, type ShowcasePost } from '../../showcase/client';
 import { btn, modal, spriteCanvas, toast } from '../dom';
 import { openItem } from './inspect';
@@ -124,6 +124,7 @@ export function showcaseTab(app: App, body: HTMLElement) {
       el('div', { class: 'who' }, `${p.author.player} · ${p.author.workshop}`),
       el('div', { class: 'row', style: { justifyContent: 'center' } },
         el('span', { class: 'tag' }, it.stats?.grade ?? ''),
+        isLegacy(it) ? el('span', { class: 'tag legacy', title: 'Made before the workshop\'s great renovation' }, 'Legacy') : null,
         mine.has(p.id) ? el('span', { class: 'tag good' }, 'Yours') : null),
       damascusBadge(it),
     );

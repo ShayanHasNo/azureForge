@@ -7,7 +7,7 @@ import { clamp, mean, stdev } from '../core/util.js';
 import { compatibility, hasMat, mat, UNIT_COST } from '../data/materials.js';
 import { APPROACHES, findOption, palette } from '../data/options.js';
 import { tradition } from '../data/traditions.js';
-import type { Item, ItemStats, StageQuality } from './types.js';
+import type { Category, Item, ItemStats, StageQuality } from './types.js';
 
 const n = (v: number) => v / 100;
 
@@ -91,6 +91,9 @@ export function collectDesignTags(item: Item): string[] {
   if (item.blade) { add('profile', item.blade.profile); add('tip', item.blade.tip); add('fuller', item.blade.fuller); }
   if (item.hilt) { add('guard', item.hilt.guard); add('pommel', item.hilt.pommel); add('wrap', item.hilt.wrap); }
   if (item.shield) { add('shieldShape', item.shield.shape); add('boss', item.shield.boss); }
+  if (item.bow) { add('bowMethod', item.design.method); add('bowProfile', item.bow.profile); add('bowNock', item.bow.nock || 'self'); }
+  if (item.arrows) { add('arrowPoint', item.arrows.point); add('fletchStyle', item.arrows.fletch); }
+  if (item.armor) { add('armorMethod', item.armor.method); add('armorCut', item.armor.cut); }
   add('texture', item.surface.texture);
   add('engraving', item.decoration.engraving.pattern);
   add('emblem', item.decoration.emblem);
@@ -107,6 +110,9 @@ export function decorPresence(item: Item): number {
   p += cx('finish', item.finish.finish);
   if (item.hilt) p += cx('guard', item.hilt.guard) + cx('pommel', item.hilt.pommel) + cx('wrap', item.hilt.wrap);
   if (item.blade) p += cx('profile', item.blade.profile) + cx('tip', item.blade.tip);
+  if (item.bow) p += cx('bowMethod', item.design.method ?? 'self') + cx('bowProfile', item.bow.profile) + cx('bowNock', item.bow.nock || 'self');
+  if (item.arrows) p += cx('arrowPoint', item.arrows.point) + cx('fletchStyle', item.arrows.fletch) + (item.arrows.nock ? 0.04 : 0) + 0.06;
+  if (item.armor) p += cx('armorMethod', item.armor.method) + (item.armor.cut === 'coat' ? 0.04 : 0);
   p += item.decoration.gems.length * 0.09;
   p += item.decoration.emblem !== 'none' ? 0.1 : 0;
   p += Math.min(0.12, item.decoration.inscription.trim().length * 0.012);
@@ -161,7 +167,17 @@ export function itemWeight(item: Item): number {
     const area = s.width * s.height * (s.shape === 'buckler' ? 0.4 : s.shape === 'tower' ? 1.15 : 0.8);
     return round1(area / 900 * (1 + face) * (1 + mods.weight) + 0.4);
   }
-  const b = item.blade!;
+  if (item.bow) return round1(0.35 + (item.bow.length / 150) * (0.25 + item.bow.limb * 0.09) * (P.density / 50) + (item.bow.belly ? 0.12 : 0));
+  if (item.arrows) return round1(item.arrows.count * (0.018 + (item.arrows.length / 100) * 0.03 * (P.density / 30)) + (item.arrows.point === 'broadhead' ? 0.06 : 0.03));
+  if (item.armor) {
+    const a = item.armor;
+    const base: Record<string, number> = { gambeson: 2.2, cuirbouilli: 3.2, mail: 9.5, scale: 8, brigandine: 8.5, plate: 7.5 };
+    const cut = a.cut === 'coat' ? 1.35 : a.cut === 'vest' ? 0.78 : 1;
+    const metal = hasMat(item.materials.primary) && mat(item.materials.primary).kind === 'metal';
+    return round1((base[a.method] ?? 5) * cut * (metal ? P.density / 66 : 0.7 + P.density / 130));
+  }
+  const b = item.blade;
+  if (!b) return 1;
   const vol = b.length * b.width * (0.6 + b.thickness);
   const kg = (vol / 620) * (P.density / 65) * (1 + mods.weight) + 0.25;
   return round1(item.category === 'dagger' ? kg * 0.8 : kg);
@@ -220,7 +236,7 @@ export function materialCost(item: Item): number {
   const u = UNIT_COST[item.category];
   let c = mat(item.materials.primary).value * u.primary;
   if (hasMat(item.materials.secondary)) c += mat(item.materials.secondary).value * u.secondary;
-  const grip = item.hilt?.gripMaterial ?? item.shield?.faceMaterial;
+  const grip = item.hilt?.gripMaterial ?? item.shield?.faceMaterial ?? item.materials.grip;
   if (grip && hasMat(grip)) c += mat(grip).value * u.grip;
   for (const g of item.decoration.gems) if (hasMat(g.gem)) c += mat(g.gem).value;
   if (item.materials.fusedWith && hasMat(item.materials.fusedWith)) c += mat(item.materials.fusedWith).value;
@@ -296,11 +312,82 @@ export function computeStats(item: Item): ItemStats {
   const rarityTier = 1 + Math.floor(rarity.value / 20) * 0.05;
   const value = Math.round(matCost * 1.15 + (14 + 260 * Math.pow(C, 2.2)) * (0.75 + 0.6 * collectorAppeal / 100) * rarityTier);
 
-  const functional = item.shield ? mean([coverage, integrity, durability, balance]) : mean([durability, balance, integrity, flexibility]);
+  let functional = item.shield ? mean([coverage, integrity, durability, balance]) : mean([durability, balance, integrity, flexibility]);
+
+  // Bows, arrows and armour: what the piece is for decides its headline numbers. They are built
+  // the same way as everything else — half what the material could give, half how well it was made.
+  const extra: Partial<ItemStats> = {};
+  let balanceOut = balance, durabilityOut = durability;
+  if (item.bow) {
+    const b = item.bow;
+    const errs = [...b.upper, ...b.lower];
+    const even = clamp(1 - mean(errs.map((e) => Math.abs(e))) / 0.55);
+    const limbMatch = clamp(1 - Math.abs(mean(b.upper) - mean(b.lower)) / 0.4);
+    const S = hasMat(b.string) ? mat(b.string).props : null;
+    // method: what the construction adds to the stave
+    const snap = b.belly ? 0.16 : b.backing === 'sinew' ? 0.1 : b.backing ? 0.05 : 0;
+    const spring = clamp(n(M.flexibility) * 0.7 + n(M.toughness) * 0.3 + snap);
+    const lengthF = (b.length - 120) / 44; // 0 short … 1 long
+    const shape = { longbow: { cast: 0, smooth: 0.04, stable: 0.06 }, flatbow: { cast: -0.02, smooth: 0.02, stable: 0.08 }, recurve: { cast: 0.08, smooth: -0.02, stable: -0.05 }, reflex: { cast: 0.05, smooth: 0.06, stable: -0.03 } }[b.profile] ?? { cast: 0, smooth: 0, stable: 0 };
+    const pounds = (26 + 46 * spring * (0.8 + 0.25 * (b.limb - 2) / 2)) * (0.55 + 0.45 * b.draw) * (1 - 0.12 * lengthF);
+    const stringF = S ? clamp(1 - S.density / 90) * 0.5 + 0.5 * b.stringQuality : b.stringQuality;
+    extra.drawWeight = Math.round(pounds);
+    extra.cast = r(clamp(0.5 * (spring * 0.75 + 0.25 * stringF + shape.cast - n(M.density) * 0.12) + 0.5 * (0.5 * even + 0.25 * b.draw + 0.25 * prep) - b.hinge * 0.25) * 100);
+    extra.smoothness = r(clamp(0.3 * (0.5 + 0.5 * lengthF + shape.smooth) + 0.7 * (0.7 * even + 0.3 * limbMatch) - b.hinge * 0.3) * 100);
+    extra.stability = r(clamp(0.3 * (0.6 + shape.stable + 0.2 * lengthF) + 0.7 * (0.55 * limbMatch + 0.25 * assembly + 0.2 * b.stringQuality)) * 100);
+    balanceOut = clamp(0.25 + 0.75 * (0.6 * limbMatch + 0.4 * even)) * 100;
+    durabilityOut = clamp(0.5 * clamp(n(M.toughness) * 0.8 + (b.backing ? 0.14 : 0) + 0.06 * lengthF) + 0.5 * (0.5 * even + 0.25 * b.glue + 0.25 * prep) - b.hinge * 0.35) * 100;
+    functional = mean([extra.cast!, extra.smoothness!, extra.stability!, durabilityOut]);
+  } else if (item.arrows) {
+    const a = item.arrows;
+    const straightAvg = mean(a.straight);
+    const spineSpread = clamp(Math.max(...a.spine.map((v) => Math.abs(v))) / 0.6);
+    const fletchSpread = clamp(mean(a.fletchErr.map((v) => Math.abs(v))) * 1.4);
+    const straightSpread = clamp((Math.max(...a.straight) - Math.min(...a.straight)) / 0.5);
+    const Sm = hasMat(item.materials.secondary) ? mat(item.materials.secondary).props : M;
+    const Fm = hasMat(item.materials.grip) ? mat(item.materials.grip).props : M;
+    const head = { bodkin: { pen: 0.2, flight: 0.04 }, broadhead: { pen: 0.06, flight: -0.08 }, leaf: { pen: 0, flight: 0.08 }, flint: { pen: -0.06, flight: -0.03 } }[a.point] ?? { pen: 0, flight: 0 };
+    const vane = { parabolic: 0.04, shield: 0.02, traditional: -0.02 }[a.fletch] ?? 0;
+    extra.straightness = r(straightAvg * 100);
+    extra.consistency = r(clamp(1 - 0.4 * spineSpread - 0.3 * fletchSpread - 0.3 * straightSpread) * 100);
+    extra.flight = r(clamp(0.3 * (0.55 + (1 - n(M.density)) * 0.25 + n(Fm.toughness) * 0.15 + head.flight + vane) + 0.7 * (0.45 * straightAvg + 0.3 * (1 - fletchSpread) + 0.25 * (1 - spineSpread))) * 100);
+    extra.penetration = r(clamp(0.5 * (n(Sm.hardness) * 0.7 + 0.2 + head.pen) + 0.5 * (0.6 * a.pointQuality + 0.4 * straightAvg)) * 100);
+    balanceOut = extra.consistency!;
+    durabilityOut = clamp(0.5 * (n(M.toughness) * 0.6 + n(Sm.toughness) * 0.4) + 0.5 * (0.5 * a.pointQuality + 0.5 * assembly)) * 100;
+    functional = mean([extra.flight!, extra.consistency!, extra.penetration!, extra.straightness!]);
+  } else if (item.armor) {
+    const a = item.armor;
+    const even = mean(a.even), dent = mean(a.dents);
+    const made = clamp(0.5 * even + 0.3 * (1 - a.gaps) + 0.2 * (1 - dent)); // how well the repeated work went
+    // what each construction is good and bad at (cut / thrust / blow, freedom to move, comfort)
+    const kind: Record<string, { cut: number; pierce: number; blunt: number; move: number; comfort: number; cover: number }> = {
+      gambeson: { cut: 0.42, pierce: 0.3, blunt: 0.62, move: 0.9, comfort: 0.9, cover: 0.9 },
+      cuirbouilli: { cut: 0.55, pierce: 0.42, blunt: 0.5, move: 0.78, comfort: 0.66, cover: 0.8 },
+      mail: { cut: 0.9, pierce: 0.55, blunt: 0.3, move: 0.74, comfort: 0.56, cover: 0.95 },
+      scale: { cut: 0.8, pierce: 0.68, blunt: 0.6, move: 0.6, comfort: 0.5, cover: 0.86 },
+      brigandine: { cut: 0.84, pierce: 0.76, blunt: 0.7, move: 0.68, comfort: 0.62, cover: 0.88 },
+      plate: { cut: 0.95, pierce: 0.9, blunt: 0.82, move: 0.5, comfort: 0.42, cover: 0.82 },
+    };
+    const kd = kind[a.method] ?? kind.gambeson;
+    const cutF = a.cut === 'coat' ? { cover: 1, move: -0.1 } : a.cut === 'vest' ? { cover: 0.68, move: 0.1 } : { cover: 0.84, move: 0 };
+    const matF = clamp(0.55 + 0.25 * n(M.toughness) + 0.2 * n(M.hardness));
+    const p = (base: number, w: number) => clamp(0.55 * base * matF * 1.15 + 0.45 * (0.65 * made + 0.2 * structure + 0.15 * shaping) * (0.5 + 0.5 * base)) * 100 * w;
+    extra.protCut = r(p(kd.cut, 1));
+    extra.protPierce = r(p(kd.pierce, 1 - a.gaps * 0.25));
+    extra.protBlunt = r(p(kd.blunt, 1));
+    extra.protection = r(mean([extra.protCut, extra.protPierce, extra.protBlunt]));
+    extra.mobility = r(clamp(0.55 * (kd.move + cutF.move) + 0.45 * (0.5 * assembly + 0.3 * even + 0.2 * (1 - dent)) - Math.max(0, itemWeight(item) - 9) * 0.02) * 100);
+    extra.comfort = r(clamp(0.5 * kd.comfort + 0.5 * (0.4 * assembly + 0.3 * surface + 0.3 * even)) * 100);
+    coverage = clamp(kd.cover * cutF.cover * (0.85 + 0.15 * made)) * 100;
+    balanceOut = clamp(0.3 + 0.7 * (0.5 * even + 0.5 * assembly)) * 100;
+    durabilityOut = clamp(0.5 * clamp(n(M.toughness) * 0.75 + n(M.hardness) * 0.25) + 0.5 * (0.6 * made + 0.4 * realiseStruct)) * 100;
+    functional = mean([extra.protection, extra.mobility, coverage, durabilityOut]);
+  }
   const overall = clamp((0.5 * C + 0.2 * functional / 100 + 0.15 * collectorAppeal / 100 + 0.15 * materialQuality / 100)) * 100;
 
   return {
-    craftsmanship: r(craft), materialQuality: r(materialQuality), durability: r(durability), integrity: r(integrity), balance: r(balance),
+    ...extra,
+    craftsmanship: r(craft), materialQuality: r(materialQuality), durability: r(durabilityOut), integrity: r(integrity), balance: r(balanceOut),
     flexibility: r(flexibility), weight, ornamentation: r(ornamentation), complexity: r(complexity), surfaceQuality: r(surfaceQuality),
     cohesion: r(cohesion * 100), uniqueness: r(uniqueness), collectorAppeal: r(collectorAppeal), intentFulfillment: r(intentFulfillment),
     coverage: r(coverage), compactness: r(compactness), rarity: r(rarity.value), rarityLabel: rarity.label, value, grade: gradeFor(craft), overall: r(overall),
@@ -309,10 +396,13 @@ export function computeStats(item: Item): ItemStats {
 const r = (v: number) => Math.round(v);
 
 /** Which stats a category headlines in the UI. */
-export const HEADLINE_STATS: Record<string, (keyof ItemStats)[]> = {
+export const HEADLINE_STATS: Record<Category, (keyof ItemStats)[]> = {
   sword: ['balance', 'durability', 'craftsmanship', 'ornamentation', 'collectorAppeal'],
   dagger: ['compactness', 'craftsmanship', 'ornamentation', 'rarity', 'balance'],
   shield: ['coverage', 'integrity', 'weight', 'surfaceQuality', 'ornamentation'],
+  bow: ['drawWeight', 'cast', 'smoothness', 'stability', 'craftsmanship'],
+  arrows: ['consistency', 'flight', 'penetration', 'straightness', 'craftsmanship'],
+  armor: ['protection', 'mobility', 'coverage', 'comfort', 'craftsmanship'],
 };
 
 export const STAT_LABELS: Record<string, string> = {
@@ -320,4 +410,7 @@ export const STAT_LABELS: Record<string, string> = {
   balance: 'Balance', flexibility: 'Flexibility', weight: 'Weight', ornamentation: 'Ornamental quality', complexity: 'Decorative complexity',
   surfaceQuality: 'Surface quality', cohesion: 'Artistic cohesion', uniqueness: 'Visual uniqueness', collectorAppeal: 'Collector appeal',
   intentFulfillment: 'Intent fulfilled', coverage: 'Coverage', compactness: 'Compactness', rarity: 'Rarity', value: 'Value', overall: 'Overall',
+  drawWeight: 'Draw weight (lb)', cast: 'Cast', smoothness: 'Smoothness of draw', stability: 'Stability',
+  consistency: 'Consistency of the set', straightness: 'Straightness', flight: 'Flight', penetration: 'Penetration',
+  protection: 'Protection', protCut: 'Against cuts', protPierce: 'Against thrusts', protBlunt: 'Against blows', mobility: 'Mobility', comfort: 'Comfort',
 };

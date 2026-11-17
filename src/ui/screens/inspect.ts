@@ -12,13 +12,14 @@ import { displayCapacity, galleryCapacity } from '../../game/state';
 import { CATEGORY_INFO, displayName } from '../../item/factory';
 import { generateDescription, generateName, MUTATION_WORDS } from '../../item/describe';
 import { HEADLINE_STATS, STAT_LABELS } from '../../item/stats';
-import type { Item, ItemStats } from '../../item/types';
-import { bladeLayout, renderItem, View } from '../../render/itemRenderer';
+import { isLegacy, type Item, type ItemStats } from '../../item/types';
+import { bladeLayout, renderItem, spriteScale, View } from '../../render/itemRenderer';
 import { toCanvas } from '../../render/pixel';
-import { btn, itemThumb, modal, spriteCanvas, statRow, tabs, toast } from '../dom';
+import { btn, itemThumb, modal, pixelRatio, spriteCanvas, statRow, tabs, toast } from '../dom';
 import { Showcase } from '../showcase';
 import { giveFlow, sellFlow } from './actions';
 import { damascusCard } from '../damascusCard';
+import { materialPlan } from '../../crafting/craftStages';
 import { describeDamascus, rareColor } from '../../item/damascus';
 import { showcaseButtons } from './showcase';
 
@@ -36,7 +37,7 @@ export interface OpenItemOpts {
 export function openItem(app: App, item: Item, opts: OpenItemOpts = {}) {
   const s = app.state;
   const st = item.stats!;
-  const m = modal(opts.fresh ? 'Inspection & Appraisal' : displayName(item), { onClose: () => { sc.destroy(); opts.onChange?.(); } });
+  const m = modal(opts.fresh ? 'Inspection & Appraisal' : displayName(item), { onClose: () => { sc.destroy(); fitRo.disconnect(); opts.onChange?.(); } });
   const owned = !opts.readOnly && !item.sold && !item.giftedTo;
   const wrap = el('div', { class: 'inspect' });
   const show = el('div', { class: 'showcase' });
@@ -74,9 +75,10 @@ export function openItem(app: App, item: Item, opts: OpenItemOpts = {}) {
     opts.byline ? el('p', { class: 'small muted' }, opts.byline) : null,
     el('div', { class: 'row', style: { margin: '6px 0' } },
       el('span', { class: 'tag gold' }, st.grade), el('span', { class: 'tag' }, st.rarityLabel), el('span', { class: 'tag', style: { background: tradition(item.tradition).color } }, tradition(item.tradition).name),
-      el('span', { class: 'tag cool' }, CATEGORY_INFO[item.category].name), el('span', { class: 'small muted' }, `◉ ${st.value} gold · by ${item.creator}, day ${item.createdDay} of ${item.createdSeason}`),
+      el('span', { class: 'tag cool' }, CATEGORY_INFO[item.category].name), isLegacy(item) ? el('span', { class: 'tag legacy', title: 'Made before the workshop\'s great renovation. Legacy pieces keep their original look forever.' }, 'Legacy') : null, el('span', { class: 'small muted' }, `◉ ${st.value} gold · by ${item.creator}, day ${item.createdDay} of ${item.createdSeason}`),
     ),
     el('p', {}, item.description ?? generateDescription(item)),
+    isLegacy(item) ? el('p', { class: 'small muted' }, 'A legacy piece, forged before the workshop\'s great renovation. It keeps its original look forever.') : null,
     damascusCard(item),
   ].filter((n): n is HTMLElement => !!n));
   if (item.sold) info.append(el('p', { class: 'muted' }, 'This piece was sold.'));
@@ -92,8 +94,17 @@ export function openItem(app: App, item: Item, opts: OpenItemOpts = {}) {
   info.append(tabHost);
   wrap.append(show, info);
   m.body.append(wrap);
-  const fit = () => { const r = show.getBoundingClientRect(); sc.setBox(Math.max(200, Math.floor(r.width)), Math.max(300, Math.min(Math.floor(r.height), window.innerHeight - 240))); };
+  let lastBox = '';
+  const fit = () => {
+    const r = show.getBoundingClientRect();
+    const w = Math.max(160, Math.floor(r.width)), h = Math.max(160, Math.floor(r.height));
+    if (`${w}x${h}` === lastBox) return;
+    lastBox = `${w}x${h}`;
+    sc.setBox(w, h);
+  };
   requestAnimationFrame(fit);
+  const fitRo = new ResizeObserver(fit);
+  fitRo.observe(show);
 
   if (owned) {
     const favBtn = btn(item.favorite ? '★ Favourite' : '☆ Favourite', () => { item.favorite = !item.favorite; favBtn.textContent = item.favorite ? '★ Favourite' : '☆ Favourite'; app.save(); }, 'ghost');
@@ -138,12 +149,15 @@ function detailCanvas(item: Item): HTMLCanvasElement {
   let sx = 0, sy = 0, sw = img.w, sh = img.h;
   if (item.blade) {
     const lay = bladeLayout(item);
-    sy = Math.max(0, lay.guardTop - 26); sh = img.h - sy; sx = 0; sw = img.w;
-  } else { sx = img.w * 0.2; sy = img.h * 0.2; sw = img.w * 0.6; sh = img.h * 0.6; }
-  const scale = Math.max(2, Math.floor(Math.min(380 / sw, 440 / sh)));
+    const k = spriteScale(item); // the layout is in logical pixels
+    sy = Math.max(0, (lay.guardTop - 26) * k); sh = img.h - sy; sx = 0; sw = img.w;
+  } else { sx = Math.round(img.w * 0.2); sy = Math.round(img.h * 0.2); sw = Math.round(img.w * 0.6); sh = Math.round(img.h * 0.6); }
+  const dpr = pixelRatio();
+  const scale = Math.max(1, Math.floor(Math.min((380 * dpr) / sw, (440 * dpr) / sh)));
   const c = document.createElement('canvas');
   c.width = sw * scale; c.height = sh * scale;
-  c.style.maxWidth = '100%'; c.style.maxHeight = '100%';
+  c.style.width = `${c.width / dpr}px`;
+  c.style.maxWidth = '100%'; c.style.maxHeight = '100%'; c.style.objectFit = 'contain';
   const ctx = c.getContext('2d')!;
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(src, sx, sy, sw, sh, 0, 0, c.width, c.height);
@@ -178,7 +192,15 @@ function materialsTab(body: HTMLElement, item: Item) {
       el('div', {}, el('b', {}, `${label}: ${m.name}`), ' ', el('span', { class: 'small muted' }, note || m.traits.join(', '))), el('span', { class: 'small' }, '★'.repeat(m.rarity)));
   };
   const combo = comboName(item.materials.primary, item.materials.secondary);
-  body.append(el('div', {},
+  const plan = materialPlan(item);
+  if (plan) {
+    // bows, arrows and armour name their own parts
+    body.append(el('div', {},
+      row(plan.primary.label, item.materials.primary), item.bow ? row('Backing', item.bow.backing) : null, item.bow ? row('Horn belly', item.bow.belly) : null,
+      row(plan.secondary.label, item.materials.secondary), row(plan.grip.label, item.materials.grip),
+      item.bow ? row('Nocks', item.bow.nock) : null, item.arrows ? row('Binding', item.arrows.binding) : null, item.arrows ? row('Nock inserts', item.arrows.nock) : null,
+    ));
+  } else body.append(el('div', {},
     row('Primary', item.materials.primary), row('Secondary', item.materials.secondary, combo ? `storied pairing “${combo}”` : ''), row('Fused with', item.materials.fusedWith),
     row(item.category === 'shield' ? 'Face' : 'Grip', item.hilt?.gripMaterial ?? item.shield?.faceMaterial),
     ...item.decoration.gems.map((g) => row(`Gem (${g.slot})`, g.gem)),

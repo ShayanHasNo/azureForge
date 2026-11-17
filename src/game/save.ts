@@ -1,6 +1,7 @@
 // Save/load to localStorage with a versioned envelope, a rolling backup and
 // JSON export/import so finished creations are never lost.
 
+import { ITEM_VERSION } from '../item/types';
 import { DEFAULT_SETTINGS, GameState, newGame } from './state';
 
 const KEY = 'quietforge.save.v1';
@@ -36,6 +37,10 @@ export function migrate(raw: any): GameState {
   for (const k of ['items', 'traditions', 'journals', 'upgrades', 'ownedDecor', 'extras', 'ownedExtras', 'displayed', 'gallery', 'requests', 'completedRequests', 'locations', 'combos', 'challenges', 'log'] as const)
     (s as any)[k] = Array.isArray(raw[k]) ? raw[k] : (base as any)[k];
   if (!s.traditions.includes('foundry')) s.traditions.unshift('foundry');
+  // Finished pieces keep the version they were made with (anything unmarked predates versioning → legacy).
+  for (const it of s.items) if (it && typeof it.version !== 'number') it.version = 1;
+  // A piece still on the bench has never been shown as finished, so it is completed as a current-version piece.
+  if (s.draft?.item) s.draft.item.version = ITEM_VERSION;
   return s;
 }
 

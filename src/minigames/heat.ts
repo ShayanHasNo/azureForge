@@ -80,6 +80,7 @@ class Heat extends BaseMinigame {
   private flareGlow = 0;
   // visuals
   private spr: HTMLCanvasElement;
+  private sprPer = 1;
   private tintCanvas: HTMLCanvasElement;
   private tintCtx: CanvasRenderingContext2D;
   private coals: Coal[] = [];
@@ -92,7 +93,7 @@ class Heat extends BaseMinigame {
   constructor(env: MinigameEnv) {
     super(env);
     this.prep = env.material.prep ?? DEFAULT_PREP;
-    this.isShield = env.item.category === 'shield';
+    this.isShield = !env.item.blade; // drawn upright, not laid across the coals like a blade
     this.hasBellows = env.upgrades.includes('bellows');
     this.halfW = clamp(this.prep.band * this.tune(1.15, 0.6) * (env.quirk === 'bursts' ? 1.3 : 1), 0.035, 0.25);
     this.centre = clamp(this.prep.ideal, this.halfW + 0.05, 0.95 - this.halfW);
@@ -103,7 +104,9 @@ class Heat extends BaseMinigame {
     }
     this.puffSize = 0.085;
     this.flareTimer = this.nextFlareInterval() + 2;
-    this.spr = this.sprite();
+    const work = this.sprite();
+    this.spr = this.hiOf(work); // tint the full-resolution sprite
+    this.sprPer = this.spr.width / work.width;
     this.tintCanvas = document.createElement('canvas');
     this.tintCanvas.width = this.spr.width;
     this.tintCanvas.height = this.spr.height;
@@ -353,10 +356,10 @@ class Heat extends BaseMinigame {
     tctx.globalAlpha = 1;
     tctx.globalCompositeOperation = 'source-over';
     if (this.isShield) {
-      this.drawSprite(this.tintCanvas, 240, 150, 1);
+      this.drawScaled(this.tintCanvas, 240, 150, 1, 0, this.sprPer);
     } else {
       const scale = this.env.item.category === 'dagger' ? 2 : 1;
-      this.drawSprite(this.tintCanvas, 240, 176, scale, 1);
+      this.drawScaled(this.tintCanvas, 240, 176, scale, 1, this.sprPer);
     }
     // heat halo over the piece
     const halo = ctx.createRadialGradient(240, 176, 2, 240, 176, 90);
