@@ -84,6 +84,7 @@ try {
     let shots = 0;
     while (Date.now() - t0 < 900000) {
       if (await page.locator('text=Admire & close').count()) break;
+      if ((await page.locator('.craft').count()) > 1) throw new Error('two crafting screens are open at once');
       const cont = page.locator('.result-card button:has-text("Continue")');
       if (await cont.count()) { await cont.first().click(); await sleep(300); continue; }
       const begin = page.locator('.result-card button:has-text("Begin")');

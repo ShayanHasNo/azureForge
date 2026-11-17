@@ -144,6 +144,7 @@ export class App {
     switch (s) {
       case 'forge':
       case 'anvil':
+        if (this.crafting) break; // one piece on the anvil at a time
         if (this.state.draft) openCrafting(this, null);
         else openNewPiece(this);
         break;
@@ -173,6 +174,8 @@ export class App {
 
   setCrafting(on: boolean) {
     this.crafting = on;
+    // The workshop's menus sit behind the crafting screen: keep keyboard focus (Tab) from reaching them.
+    this.hud.inert = on;
     this.scene?.setInputEnabled(!on && !modalOpen());
     this.updateAmbience();
   }
