@@ -267,7 +267,7 @@ class Inspect extends BaseMinigame {
     lamp.addColorStop(1, 'rgba(255,240,200,0)');
     ctx.fillStyle = lamp;
     ctx.fillRect(0, 0, MW, MH);
-    drawXf(ctx, this.spr, this.xf);
+    drawXf(ctx, this.hiOf(this.spr), this.xf);
     // polish patches over fixed flaws
     for (const i of this.found) {
       const c = this.centres[i];
@@ -311,7 +311,7 @@ class Inspect extends BaseMinigame {
     ctx.clip();
     ctx.fillStyle = '#1a1612';
     ctx.fillRect(lx - LOUPE_R, ly - LOUPE_R, LOUPE_R * 2, LOUPE_R * 2);
-    drawXf(ctx, this.spr, xf2);
+    drawXf(ctx, this.hiOf(this.spr), xf2);
     for (const i of this.found) {
       const [x, y] = s2scr(xf2, this.centres[i][0], this.centres[i][1]);
       ctx.fillStyle = 'rgba(255,250,235,0.12)';

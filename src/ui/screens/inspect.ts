@@ -13,9 +13,9 @@ import { CATEGORY_INFO, displayName } from '../../item/factory';
 import { generateDescription, generateName, MUTATION_WORDS } from '../../item/describe';
 import { HEADLINE_STATS, STAT_LABELS } from '../../item/stats';
 import { isLegacy, type Item, type ItemStats } from '../../item/types';
-import { bladeLayout, renderItem, View } from '../../render/itemRenderer';
+import { bladeLayout, renderItem, spriteScale, View } from '../../render/itemRenderer';
 import { toCanvas } from '../../render/pixel';
-import { btn, itemThumb, modal, spriteCanvas, statRow, tabs, toast } from '../dom';
+import { btn, itemThumb, modal, pixelRatio, spriteCanvas, statRow, tabs, toast } from '../dom';
 import { Showcase } from '../showcase';
 import { giveFlow, sellFlow } from './actions';
 import { damascusCard } from '../damascusCard';
@@ -139,12 +139,15 @@ function detailCanvas(item: Item): HTMLCanvasElement {
   let sx = 0, sy = 0, sw = img.w, sh = img.h;
   if (item.blade) {
     const lay = bladeLayout(item);
-    sy = Math.max(0, lay.guardTop - 26); sh = img.h - sy; sx = 0; sw = img.w;
-  } else { sx = img.w * 0.2; sy = img.h * 0.2; sw = img.w * 0.6; sh = img.h * 0.6; }
-  const scale = Math.max(2, Math.floor(Math.min(380 / sw, 440 / sh)));
+    const k = spriteScale(item); // the layout is in logical pixels
+    sy = Math.max(0, (lay.guardTop - 26) * k); sh = img.h - sy; sx = 0; sw = img.w;
+  } else { sx = Math.round(img.w * 0.2); sy = Math.round(img.h * 0.2); sw = Math.round(img.w * 0.6); sh = Math.round(img.h * 0.6); }
+  const dpr = pixelRatio();
+  const scale = Math.max(1, Math.floor(Math.min((380 * dpr) / sw, (440 * dpr) / sh)));
   const c = document.createElement('canvas');
   c.width = sw * scale; c.height = sh * scale;
-  c.style.maxWidth = '100%'; c.style.maxHeight = '100%';
+  c.style.width = `${c.width / dpr}px`;
+  c.style.maxWidth = '100%'; c.style.maxHeight = '100%'; c.style.objectFit = 'contain';
   const ctx = c.getContext('2d')!;
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(src, sx, sy, sw, sh, 0, 0, c.width, c.height);

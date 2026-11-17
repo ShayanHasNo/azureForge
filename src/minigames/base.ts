@@ -46,12 +46,20 @@ export abstract class BaseMinigame implements MinigameInstance {
   private finishTimer = 0;
   private pending?: MinigameResult;
   protected readonly mirrored: boolean;
+  /** Canvas buffer pixels per logical pixel (also the hi-res sprite scale). */
+  protected readonly res: number;
+  /** Working sprite → lazily rendered hi-res twin used for drawing. */
+  private twins = new WeakMap<HTMLCanvasElement, () => HTMLCanvasElement>();
 
   constructor(protected env: MinigameEnv) {
     const c = env.canvas;
-    c.width = MW;
-    c.height = MH;
+    // The canvas buffer is `res` times the logical MW×MH, so hi-res sprites and text stay sharp;
+    // every minigame still draws in logical coordinates.
+    this.res = Math.max(1, Math.round(env.spriteHi ? env.renderScale ?? 1 : 1));
+    c.width = MW * this.res;
+    c.height = MH * this.res;
     this.ctx = c.getContext('2d')!;
+    this.ctx.setTransform(this.res, 0, 0, this.res, 0, 0);
     this.ctx.imageSmoothingEnabled = false;
     this.mirrored = env.quirk === 'mirrored';
     const toLocal = (e: PointerEvent) => {
@@ -215,7 +223,7 @@ export abstract class BaseMinigame implements MinigameInstance {
   private render() {
     const ctx = this.ctx;
     ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.setTransform(this.res, 0, 0, this.res, 0, 0);
     if (this.shakeAmt > 0) ctx.translate((Math.random() - 0.5) * this.shakeAmt, (Math.random() - 0.5) * this.shakeAmt);
     if (this.mirrored) { ctx.translate(MW, 0); ctx.scale(-1, 1); }
     this.draw(ctx);
@@ -268,6 +276,17 @@ export abstract class BaseMinigame implements MinigameInstance {
     ctx.fillStyle = color;
     ctx.fillRect(x, y, Math.round(w * clamp(v)), h);
   }
+  /** Draw a canvas whose pixels are `per` to one logical sprite pixel (e.g. a tinted copy of a hi-res twin). */
+  protected drawScaled(img: HTMLCanvasElement, x: number, y: number, scale: number, quarterTurns = 0, per = 1) {
+    const ctx = this.ctx;
+    const w = (img.width / per) * scale, h = (img.height / per) * scale;
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    ctx.translate(Math.round(x), Math.round(y));
+    ctx.rotate((quarterTurns * Math.PI) / 2);
+    ctx.drawImage(img, -Math.round(w / 2), -Math.round(h / 2), w, h);
+    ctx.restore();
+  }
   /** Draw an item sprite scaled by an integer, optionally rotated by 90° steps; (x,y) = centre. */
   protected drawSprite(img: HTMLCanvasElement, x: number, y: number, scale: number, quarterTurns = 0) {
     const ctx = this.ctx;
@@ -275,11 +294,27 @@ export abstract class BaseMinigame implements MinigameInstance {
     ctx.imageSmoothingEnabled = false;
     ctx.translate(Math.round(x), Math.round(y));
     ctx.rotate((quarterTurns * Math.PI) / 2);
-    ctx.drawImage(img, -Math.round((img.width * scale) / 2), -Math.round((img.height * scale) / 2), img.width * scale, img.height * scale);
+    // sized by the working sprite's logical dimensions; drawn from its hi-res twin
+    ctx.drawImage(this.hiOf(img), -Math.round((img.width * scale) / 2), -Math.round((img.height * scale) / 2), img.width * scale, img.height * scale);
     ctx.restore();
   }
+  /**
+   * The 1x working sprite: its pixels are the logical units of the item's geometry, so minigames
+   * measure and hit-test against it. Draw it with drawSprite(), or pass hiOf(sprite) to drawImage
+   * with the same logical destination size, to show the full-resolution version.
+   */
   protected sprite(item: Item = this.env.item, view: View = 'front') {
-    return this.env.sprite(item, view);
+    const c = this.env.sprite(item, view);
+    const hi = this.env.spriteHi;
+    if (hi && this.res > 1) {
+      let made: HTMLCanvasElement | null = null;
+      this.twins.set(c, () => (made ??= hi(item, view)));
+    }
+    return c;
+  }
+  /** The full-resolution twin of a working sprite (or the sprite itself if there is none). */
+  protected hiOf(img: HTMLCanvasElement): HTMLCanvasElement {
+    return this.twins.get(img)?.() ?? img;
   }
   /** A warm workshop backdrop with a soft forge glow; `glow` 0..1. */
   protected backdrop(glow = 0.6, tint = '#3a2418') {

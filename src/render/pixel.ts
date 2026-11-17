@@ -49,6 +49,33 @@ export class PixelImage {
   }
 }
 
+/**
+ * Area-average downscale by factor s (0..1), keeping a crisp alpha edge. Used
+ * when a sprite has to be shown smaller than its native size, where
+ * nearest-neighbour would drop pixels unevenly.
+ */
+export function downscaled(img: PixelImage, s: number): PixelImage {
+  const dw = Math.max(1, Math.floor(img.w * s)), dh = Math.max(1, Math.floor(img.h * s));
+  const out = new PixelImage(dw, dh);
+  const d = img.data;
+  for (let dy = 0; dy < dh; dy++) {
+    const sy0 = Math.floor(dy / s), sy1 = Math.max(sy0 + 1, Math.floor((dy + 1) / s));
+    for (let dx = 0; dx < dw; dx++) {
+      const sx0 = Math.floor(dx / s), sx1 = Math.max(sx0 + 1, Math.floor((dx + 1) / s));
+      let r = 0, g = 0, b = 0, a = 0, n = 0;
+      for (let y = sy0; y < sy1 && y < img.h; y++)
+        for (let x = sx0; x < sx1 && x < img.w; x++) {
+          const i = (y * img.w + x) * 4, al = d[i + 3];
+          r += d[i] * al; g += d[i + 1] * al; b += d[i + 2] * al; a += al; n++;
+        }
+      if (!n || a / n < 255 * 0.3) continue;
+      const o = (dy * dw + dx) * 4;
+      out.data[o] = r / a; out.data[o + 1] = g / a; out.data[o + 2] = b / a; out.data[o + 3] = a / n > 200 ? 255 : Math.round(a / n);
+    }
+  }
+  return out;
+}
+
 /** Convert to an HTMLCanvasElement (browser only). */
 export function toCanvas(img: PixelImage, scale = 1): HTMLCanvasElement {
   const c = document.createElement('canvas');

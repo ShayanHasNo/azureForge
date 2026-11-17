@@ -6,8 +6,9 @@ import { hasMat, mat } from '../data/materials';
 import { palette } from '../data/options';
 import type { Item } from '../item/types';
 import { rareColor } from '../item/damascus';
-import { renderItem, View } from '../render/itemRenderer';
-import { toCanvas } from '../render/pixel';
+import type { View } from '../render/itemRenderer';
+import { PixelImage, toCanvas } from '../render/pixel';
+import { fittedSprite, pixelRatio } from './dom';
 
 export class Showcase {
   canvas = document.createElement('canvas');
@@ -15,8 +16,10 @@ export class Showcase {
   private t = 0;
   private motes: { x: number; y: number; vy: number; life: number }[] = [];
   private sprite!: HTMLCanvasElement;
-  private img!: ReturnType<typeof renderItem>;
+  private img!: PixelImage;
   private scale = 2;
+  /** Device pixels per CSS pixel; the canvas buffer is in device pixels so hi-res sprites show every pixel. */
+  private dpr = 1;
   constructor(public item: Item, public view: View = 'front', private box: { w: number; h: number } = { w: 360, h: 460 }, private opts: { reducedMotion?: boolean; zoom?: number; background?: boolean } = {}) {
     this.canvas.style.maxWidth = '100%';
     this.canvas.style.maxHeight = '100%';
@@ -41,12 +44,17 @@ export class Showcase {
     this.refresh();
   }
   refresh() {
-    this.img = renderItem(this.item, this.view);
-    this.sprite = toCanvas(this.img);
+    const dpr = (this.dpr = pixelRatio());
     const zoom = this.opts.zoom ?? 1;
-    this.scale = Math.max(1, Math.floor(Math.min((this.box.w - 20) / this.img.w, (this.box.h - 20) / this.img.h) * zoom));
-    this.canvas.width = Math.max(this.box.w, 60);
-    this.canvas.height = Math.max(this.box.h, 60);
+    const w = Math.max(this.box.w, 60), h = Math.max(this.box.h, 60);
+    const fit = fittedSprite(this.item, this.view, (w - 20) * dpr * zoom, (h - 20) * dpr * zoom);
+    this.img = fit.img;
+    this.scale = fit.scale;
+    this.sprite = toCanvas(this.img);
+    this.canvas.width = w * dpr;
+    this.canvas.height = h * dpr;
+    this.canvas.style.width = `${w}px`;
+    this.canvas.style.height = `${h}px`;
   }
   private glowColor(): string {
     const f = this.item.finish;
@@ -66,18 +74,19 @@ export class Showcase {
     ctx.imageSmoothingEnabled = false;
     ctx.clearRect(0, 0, c.width, c.height);
     const rm = this.opts.reducedMotion;
-    const bob = rm ? 0 : Math.round(Math.sin(this.t * 1.2) * 2);
+    const dpr = this.dpr;
+    const bob = rm ? 0 : Math.round(Math.sin(this.t * 1.2) * 2 * dpr);
     const w = this.img.w * this.scale, h = this.img.h * this.scale;
     const x = Math.round((c.width - w) / 2), y = Math.round((c.height - h) / 2) + bob;
     // soft floor shadow
     ctx.fillStyle = 'rgba(0,0,0,0.25)';
     ctx.beginPath();
-    ctx.ellipse(c.width / 2, y + h + 4, w * 0.3, 5, 0, 0, Math.PI * 2);
+    ctx.ellipse(c.width / 2, y + h + 4 * dpr, w * 0.3, 5 * dpr, 0, 0, Math.PI * 2);
     ctx.fill();
     const glow = this.glowColor();
     if (glow) {
       const [r, g, b] = hexToRgb(glow);
-      const grad = ctx.createRadialGradient(c.width / 2, c.height / 2, 10, c.width / 2, c.height / 2, Math.max(w, h) * 0.6);
+      const grad = ctx.createRadialGradient(c.width / 2, c.height / 2, 10 * dpr, c.width / 2, c.height / 2, Math.max(w, h) * 0.6);
       grad.addColorStop(0, `rgba(${r},${g},${b},${0.18 + 0.06 * Math.sin(this.t * 2)})`);
       grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
       ctx.fillStyle = grad;
@@ -92,9 +101,10 @@ export class Showcase {
         const pos = (k / 0.35) * (h + w) - w;
         // pixel-stepped glint drawn only where sprite pixels exist
         const step = this.scale;
+        const gw = Math.max(2, Math.round(this.img.w / 32)); // glint width in sprite pixels
         for (let py = 0; py < this.img.h; py++) {
           const px = Math.round((pos - py * this.scale * 0.6) / this.scale);
-          for (let dx = 0; dx < 2; dx++) {
+          for (let dx = 0; dx < gw; dx++) {
             const sx = px + dx;
             if (sx < 0 || sx >= this.img.w) continue;
             if (this.img.alpha(sx, py) < 200) continue;
@@ -106,14 +116,14 @@ export class Showcase {
       if (glow) {
         if (Math.random() < 0.25) {
           const b = this.img.bounds();
-          this.motes.push({ x: x + (b.x + Math.random() * b.w) * this.scale, y: y + (b.y + Math.random() * b.h) * this.scale, vy: -10 - Math.random() * 20, life: 1 });
+          this.motes.push({ x: x + (b.x + Math.random() * b.w) * this.scale, y: y + (b.y + Math.random() * b.h) * this.scale, vy: (-10 - Math.random() * 20) * dpr, life: 1 });
         }
         const [r, g, bb] = hexToRgb(glow);
         for (const m of this.motes) {
           m.y += m.vy / 60;
           m.life -= 1 / 90;
           ctx.fillStyle = `rgba(${r},${g},${bb},${Math.max(0, m.life)})`;
-          ctx.fillRect(Math.round(m.x), Math.round(m.y), this.scale > 2 ? 3 : 2, this.scale > 2 ? 3 : 2);
+          ctx.fillRect(Math.round(m.x), Math.round(m.y), 2 * dpr, 2 * dpr);
         }
         this.motes = this.motes.filter((m) => m.life > 0);
       }

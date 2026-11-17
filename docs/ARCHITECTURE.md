@@ -49,6 +49,8 @@ app / ui  ──► workshop scene, audio
 The rules that keep this architecture extensible:
 
 - **Minigames never mutate the item.** They receive a clone and return a `MinigameResult` (`score`, `details`, `data`). `crafting/apply.ts` is the only place where measured performance is written into the item.
+- **Item geometry is in logical pixels; the renderer draws at `RENDER_SCALE` device pixels per logical pixel.** `renderItem` returns the full-resolution sprite. `renderItemAt(item, view, 1)` gives the 1x working sprite whose pixels are the logical units used by `bladeLayout`/`bladeRow`/`bladePixel`; minigames measure against that and draw its hi-res twin (`BaseMinigame.hiOf`).
+- **Legacy pieces never change.** Items with `version` 1 are drawn by the frozen copy in `render/legacy`, and `tests/legacy.test.ts` pins their pixel hashes. Change the look of current pieces only in `render/itemRenderer.ts`; bump `ITEM_VERSION` and freeze another copy if a future change must not touch existing pieces.
 - **The renderer reads only the item.** `renderItem(item, view)` is a pure function of the stored parameters and `item.seed`, and it's cached by a key built from the visual parameters.
 - **Stats are recomputable.** `computeStats(item)` is pure, so stats can be rebuilt from saved data at any time.
 - **Stages are data.** `StageDef` declares controls, validation and a minigame. A tradition is an ordered list of stage IDs, so adding, removing or reordering stages needs no engine changes. Experimental reorders them at runtime.

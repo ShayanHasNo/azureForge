@@ -64,8 +64,11 @@ class Anneal extends BaseMinigame {
     this.futWin = this.tune(9, 5.5);
     this.buildCurve();
     this.p = this.segs[0].from;
-    this.spr = this.sprite();
-    this.sprScale = this.spr.height * 2 <= 240 && this.spr.width * 2 <= 124 ? 2 : 1;
+    const work = this.sprite();
+    this.spr = this.hiOf(work); // tint the full-resolution sprite
+    const per = this.spr.width / work.width;
+    // screen pixels per sprite pixel (the sprite may be hi-res)
+    this.sprScale = (work.height * 2 <= 240 && work.width * 2 <= 124 ? 2 : 1) / per;
     this.tint = document.createElement('canvas');
     this.tint.width = this.spr.width;
     this.tint.height = this.spr.height;
@@ -297,7 +300,7 @@ class Anneal extends BaseMinigame {
     halo.addColorStop(1, 'rgba(160,236,200,0)');
     ctx.fillStyle = halo;
     ctx.fillRect(8, 22, 128, 226);
-    this.drawSprite(this.tint, this.sprX, this.sprY, this.sprScale);
+    this.drawScaled(this.tint, this.sprX, this.sprY, this.sprScale);
     // twinkles (4-point stars)
     for (const tw of this.twinkles) {
       const a = clamp(tw.life / tw.max);

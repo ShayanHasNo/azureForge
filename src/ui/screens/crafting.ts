@@ -16,7 +16,7 @@ import { computeStats, HEADLINE_STATS, physicsBalance, STAT_LABELS } from '../..
 import type { Category, ItemStats } from '../../item/types';
 import { MINIGAMES } from '../../minigames';
 import { gradeOf, MinigameInstance, QUIRKS } from '../../minigames/types';
-import { renderItem, View } from '../../render/itemRenderer';
+import { renderItem, renderItemAt, spriteScale, View } from '../../render/itemRenderer';
 import { toCanvas } from '../../render/pixel';
 import { btn, confirmDialog, modal, sfxClick, statRow, toast } from '../dom';
 import { Showcase } from '../showcase';
@@ -257,7 +257,10 @@ export function openCrafting(app: App, session: CraftSession | null) {
       audio,
       settings: { reducedMotion: s.settings.reducedMotion, highContrast: s.settings.highContrast, colorblind: s.settings.colorblind },
       upgrades: s.upgrades,
-      sprite: (it: any, v: View = 'front') => toCanvas(renderItem(it, v)),
+      // Minigames work on the 1x "working" sprite, whose pixels are the logical units of the item's geometry.
+      sprite: (it: any, v: View = 'front') => toCanvas(renderItemAt(it, v, 1)),
+      spriteHi: (it: any, v: View = 'front') => toCanvas(renderItem(it, v)),
+      renderScale: spriteScale(ses.item),
     };
   }
 

@@ -80,6 +80,7 @@ class Heat extends BaseMinigame {
   private flareGlow = 0;
   // visuals
   private spr: HTMLCanvasElement;
+  private sprPer = 1;
   private tintCanvas: HTMLCanvasElement;
   private tintCtx: CanvasRenderingContext2D;
   private coals: Coal[] = [];
@@ -103,7 +104,9 @@ class Heat extends BaseMinigame {
     }
     this.puffSize = 0.085;
     this.flareTimer = this.nextFlareInterval() + 2;
-    this.spr = this.sprite();
+    const work = this.sprite();
+    this.spr = this.hiOf(work); // tint the full-resolution sprite
+    this.sprPer = this.spr.width / work.width;
     this.tintCanvas = document.createElement('canvas');
     this.tintCanvas.width = this.spr.width;
     this.tintCanvas.height = this.spr.height;
@@ -353,10 +356,10 @@ class Heat extends BaseMinigame {
     tctx.globalAlpha = 1;
     tctx.globalCompositeOperation = 'source-over';
     if (this.isShield) {
-      this.drawSprite(this.tintCanvas, 240, 150, 1);
+      this.drawScaled(this.tintCanvas, 240, 150, 1, 0, this.sprPer);
     } else {
       const scale = this.env.item.category === 'dagger' ? 2 : 1;
-      this.drawSprite(this.tintCanvas, 240, 176, scale, 1);
+      this.drawScaled(this.tintCanvas, 240, 176, scale, 1, this.sprPer);
     }
     // heat halo over the piece
     const halo = ctx.createRadialGradient(240, 176, 2, 240, 176, 90);

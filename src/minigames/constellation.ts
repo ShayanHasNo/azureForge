@@ -257,10 +257,10 @@ class Constellation extends BaseMinigame {
       const cx = Math.round((SX0 + SX1) / 2 + (midY - img.height / 2) * s), cy = Math.round((SY0 + SY1) / 2 - (midX - img.width / 2) * s);
       ctx.translate(cx, cy);
       ctx.rotate(Math.PI / 2);
-      ctx.drawImage(img, -(img.width * s) / 2, -(img.height * s) / 2, img.width * s, img.height * s);
+      ctx.drawImage(this.hiOf(img), -(img.width * s) / 2, -(img.height * s) / 2, img.width * s, img.height * s);
     } else {
       ctx.translate(MW / 2, Math.round((SY0 + SY1) / 2));
-      ctx.drawImage(img, -img.width, -img.height, img.width * 2, img.height * 2);
+      ctx.drawImage(this.hiOf(img), -img.width, -img.height, img.width * 2, img.height * 2);
     }
     ctx.restore();
   }

@@ -128,7 +128,13 @@ export interface StageQuality {
   finishing?: number;
 }
 
-export interface Blemish { t: number; u: number; kind: 'pit' | 'scratch' | 'scale' }
+export interface Blemish {
+  t: number;
+  u: number;
+  kind: 'pit' | 'scratch' | 'scale';
+  /** How deep / obvious the flaw is, 0..1 (absent = 1). Faint ones are best found with the inspection lamp. */
+  depth?: number;
+}
 
 export interface ItemStats {
   craftsmanship: number;

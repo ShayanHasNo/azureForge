@@ -727,7 +727,7 @@ class Polish extends BaseMinigame {
     ctx.fillRect(20, 72, MW - 40, 140);
     ctx.fillStyle = 'rgba(0,0,0,0.25)';
     ctx.fillRect(20, 210, MW - 40, 2);
-    this.drawImg(ctx, this.spr);
+    this.drawImg(ctx, this.hiOf(this.spr));
     this.buildOverlay();
     this.drawImg(ctx, this.overlay);
     // zone ticks

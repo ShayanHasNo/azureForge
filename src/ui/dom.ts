@@ -5,7 +5,7 @@ import { el } from '../core/util';
 import { displayName } from '../item/factory';
 import type { Item, ItemStats } from '../item/types';
 import { renderItem, View } from '../render/itemRenderer';
-import { toCanvas } from '../render/pixel';
+import { downscaled, PixelImage, toCanvas } from '../render/pixel';
 import { STAT_LABELS } from '../item/stats';
 
 export { el };
@@ -100,15 +100,44 @@ export function tabs(container: HTMLElement, names: [string, string][], render: 
   return { select };
 }
 
-/** Item sprite scaled by an integer to fit (w × h) box. */
-export function spriteCanvas(item: Item, maxW: number, maxH: number, view: View = 'front'): HTMLCanvasElement {
-  const img = renderItem(item, view);
-  const scale = Math.max(1, Math.floor(Math.min(maxW / img.w, maxH / img.h)));
-  return toCanvas(img, scale);
+/** Device pixels per CSS pixel, as a whole number (sprites are always drawn on whole device pixels). */
+export function pixelRatio(): number {
+  return Math.max(1, Math.min(4, Math.round(typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1)));
+}
+
+const fitCache = new WeakMap<PixelImage, Map<string, PixelImage>>();
+/**
+ * The item's sprite prepared for a box of (maxW × maxH) device pixels: an
+ * integer upscale when there is room, otherwise an area-averaged reduction
+ * (never a ragged nearest-neighbour shrink).
+ */
+export function fittedSprite(item: Item, view: View, maxW: number, maxH: number): { img: PixelImage; scale: number } {
+  const full = renderItem(item, view);
+  const f = Math.min(maxW / full.w, maxH / full.h);
+  if (f >= 1) return { img: full, scale: Math.floor(f) };
+  let m = fitCache.get(full);
+  if (!m) fitCache.set(full, (m = new Map()));
+  const key = f.toFixed(4);
+  let small = m.get(key);
+  if (!small) m.set(key, (small = downscaled(full, f)));
+  return { img: small, scale: 1 };
+}
+
+/**
+ * Item sprite sized to fit a (maxW × maxH) box of CSS pixels, drawn on whole
+ * device pixels. With `cssSize` (default) the canvas is given its CSS size;
+ * pass false where a stylesheet sizes it.
+ */
+export function spriteCanvas(item: Item, maxW: number, maxH: number, view: View = 'front', cssSize = true): HTMLCanvasElement {
+  const dpr = pixelRatio();
+  const { img, scale } = fittedSprite(item, view, maxW * dpr, maxH * dpr);
+  const c = toCanvas(img, scale);
+  if (cssSize) { c.style.width = `${c.width / dpr}px`; c.style.height = `${c.height / dpr}px`; }
+  return c;
 }
 
 export function itemThumb(item: Item, onClick?: () => void, extra?: Node): HTMLElement {
-  const c = spriteCanvas(item, 120, 150);
+  const c = spriteCanvas(item, 150, 150, 'front', false);
   const card = el('div', { class: `card thumb ${onClick ? 'click' : ''}`, tabindex: onClick ? '0' : undefined, role: onClick ? 'button' : undefined },
     c,
     el('div', { class: 'nm' }, (item.favorite ? '★ ' : '') + displayName(item)),

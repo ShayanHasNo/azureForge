@@ -323,7 +323,7 @@ class Hammer extends BaseMinigame {
       ctx.translate(255, 152);
       ctx.rotate(Math.PI / 2);
       ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(spr, -Math.round((spr.width * scale) / 2), -Math.round((lay * scale) / 2), spr.width * scale, lay * scale);
+      ctx.drawImage(this.hiOf(spr), -Math.round((spr.width * scale) / 2), -Math.round((lay * scale) / 2), spr.width * scale, lay * scale);
       ctx.restore();
       // heat glow on the current segment
       const sx = this.segmentX(this.seg);

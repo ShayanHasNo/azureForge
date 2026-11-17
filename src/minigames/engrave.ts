@@ -461,7 +461,7 @@ class Engrave extends BaseMinigame {
     ctx.imageSmoothingEnabled = false;
     ctx.translate(cx, cy);
     if (rot) ctx.rotate(Math.PI / 2);
-    ctx.drawImage(this.previewCanvas, -(W * s) / 2, -(H * s) / 2, W * s, H * s);
+    ctx.drawImage(this.hiOf(this.previewCanvas), -(W * s) / 2, -(H * s) / 2, W * s, H * s);
     ctx.restore();
     if (this.state !== 'done') this.drawGuides(ctx);
     this.drawCuts(ctx);
@@ -564,7 +564,8 @@ class Engrave extends BaseMinigame {
       ctx.fillStyle = '#120c0a';
       ctx.fillRect(lx - 2, ly - 2, size + 4, size + 4);
       try {
-        ctx.drawImage(this.env.canvas, Math.round(gx - src / 2), Math.round(gy - src / 2), src, src, lx, ly, size, size);
+        const r = this.res; // the canvas buffer is in device pixels
+        ctx.drawImage(this.env.canvas, Math.round(gx - src / 2) * r, Math.round(gy - src / 2) * r, src * r, src * r, lx, ly, size, size);
       } catch { /* ignore */ }
       ctx.strokeStyle = '#a07a4a';
       ctx.lineWidth = 2;
