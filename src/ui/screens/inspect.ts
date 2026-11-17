@@ -19,6 +19,7 @@ import { btn, itemThumb, modal, pixelRatio, spriteCanvas, statRow, tabs, toast }
 import { Showcase } from '../showcase';
 import { giveFlow, sellFlow } from './actions';
 import { damascusCard } from '../damascusCard';
+import { materialPlan } from '../../crafting/craftStages';
 import { describeDamascus, rareColor } from '../../item/damascus';
 import { showcaseButtons } from './showcase';
 
@@ -191,7 +192,15 @@ function materialsTab(body: HTMLElement, item: Item) {
       el('div', {}, el('b', {}, `${label}: ${m.name}`), ' ', el('span', { class: 'small muted' }, note || m.traits.join(', '))), el('span', { class: 'small' }, '★'.repeat(m.rarity)));
   };
   const combo = comboName(item.materials.primary, item.materials.secondary);
-  body.append(el('div', {},
+  const plan = materialPlan(item);
+  if (plan) {
+    // bows, arrows and armour name their own parts
+    body.append(el('div', {},
+      row(plan.primary.label, item.materials.primary), item.bow ? row('Backing', item.bow.backing) : null, item.bow ? row('Horn belly', item.bow.belly) : null,
+      row(plan.secondary.label, item.materials.secondary), row(plan.grip.label, item.materials.grip),
+      item.bow ? row('Nocks', item.bow.nock) : null, item.arrows ? row('Binding', item.arrows.binding) : null, item.arrows ? row('Nock inserts', item.arrows.nock) : null,
+    ));
+  } else body.append(el('div', {},
     row('Primary', item.materials.primary), row('Secondary', item.materials.secondary, combo ? `storied pairing “${combo}”` : ''), row('Fused with', item.materials.fusedWith),
     row(item.category === 'shield' ? 'Face' : 'Grip', item.hilt?.gripMaterial ?? item.shield?.faceMaterial),
     ...item.decoration.gems.map((g) => row(`Gem (${g.slot})`, g.gem)),

@@ -11,7 +11,7 @@ import { OptionDef } from '../../data/options';
 import { STAGE_INFO, StageId, TRADITIONS } from '../../data/traditions';
 import { UPGRADES } from '../../data/workshop';
 import { recordCompletedItem, traditionUnlockable } from '../../game/progress';
-import { CATEGORY_INFO, cloneItem } from '../../item/factory';
+import { CATEGORY_INFO, cloneItem, CRAFTABLE } from '../../item/factory';
 import { computeStats, HEADLINE_STATS, physicsBalance, STAT_LABELS } from '../../item/stats';
 import type { Category, ItemStats } from '../../item/types';
 import { MINIGAMES } from '../../minigames';
@@ -32,13 +32,17 @@ export function openNewPiece(app: App) {
     m.body.innerHTML = '';
     m.body.append(el('h3', {}, 'What will you make?'));
     const cats = el('div', { class: 'grid cols-3' });
-    const catReq: Record<Category, string | null> = { sword: null, dagger: 'smallanvil', shield: 'shieldframe' };
-    for (const c of ['sword', 'dagger', 'shield'] as Category[]) {
+    const catReq: Record<Category, string | null> = { sword: null, dagger: 'smallanvil', shield: 'shieldframe', bow: 'tillertree', arrows: 'fletchjig', armor: 'armourstand' };
+    const catBlurb: Record<Category, string> = {
+      sword: 'Balance, durability, ornament, appeal.', dagger: 'Compact, detailed, collectible.', shield: 'Coverage, integrity, weight, surface.',
+      bow: 'Draw weight, cast, an even tiller. Four ways to build one.', arrows: 'A matched set of six: straight, true and alike.', armor: 'Protection against cut, thrust and blow. Six ways to make it.',
+    };
+    for (const c of CRAFTABLE) {
       const req = catReq[c];
       const locked = req && !s.upgrades.includes(req);
       const card = el('div', { class: `card click ${category === c ? 'sel' : ''} ${locked ? 'locked' : ''}`, tabindex: '0', role: 'button' },
         el('b', {}, CATEGORY_INFO[c].name),
-        el('div', { class: 'small muted' }, locked ? `Needs the ${UPGRADES.find((u) => u.id === req)?.name} (Workshop → Tools).` : c === 'sword' ? 'Balance, durability, ornament, appeal.' : c === 'dagger' ? 'Compact, detailed, collectible.' : 'Coverage, integrity, weight, surface.'),
+        el('div', { class: 'small muted' }, locked ? `Needs the ${UPGRADES.find((u) => u.id === req)?.name} (Workshop → Tools).` : catBlurb[c]),
       );
       card.onclick = () => { if (locked) return toast('Buy the tool at your workbench first.'); sfxClick(); category = c; render(); };
       cats.append(card);
@@ -49,7 +53,7 @@ export function openNewPiece(app: App) {
       const ok = s.traditions.includes(t.id) || traditionUnlockable(t, s);
       const card = el('div', { class: `card click ${trad === t.id ? 'sel' : ''} ${ok ? '' : 'locked'}`, tabindex: '0', role: 'button', style: { borderLeft: `5px solid ${t.color}` } },
         el('b', {}, t.name), el('div', { class: 'small' }, ok ? t.philosophy : `🔒 ${t.unlock.hint}`),
-        ok ? el('div', { class: 'small muted' }, `Stages: ${t.stages.filter((x) => x !== 'appraisal').map((x) => STAGE_INFO[x].name).join(' → ')}`) : null,
+        ok ? el('div', { class: 'small muted' }, ['bow', 'arrows', 'armor'].includes(category) ? 'The stages follow the construction you choose; the tradition sets the difficulty and the decorative language.' : `Stages: ${t.stages.filter((x) => x !== 'appraisal').map((x) => STAGE_INFO[x].name).join(' → ')}`) : null,
       );
       card.onclick = () => { if (!ok) return; sfxClick(); trad = t.id; render(); };
       grid.append(card);
@@ -345,7 +349,7 @@ export function openCrafting(app: App, session: CraftSession | null) {
 // ---------------------------------------------------------------- generic control renderers
 interface CtlEnv { state: App['state']; preview: () => void }
 function renderControl(c: Control, disabled: boolean, changed: () => void, env: CtlEnv): HTMLElement {
-  const wrap = el('div', { class: 'ctl' });
+  const wrap = el('div', { class: 'ctl', 'data-key': c.key });
   const lbl = (t: string) => el('div', { class: 'lbl' }, t);
   const help = (t?: string): Node | string => (t ? el('div', { class: 'help' }, t) : '');
   switch (c.kind) {
@@ -431,6 +435,9 @@ function renderControl(c: Control, disabled: boolean, changed: () => void, env: 
         card.onclick = () => { if (!enough) { toast(`You need ${c.need} ${m.name} (have ${have}). ${m.source}`); return; } sfxClick(); c.set(id); changed(); };
         list.append(card);
       }
+      // say what else would do, and where to find it, when the player owns few of the options
+      const missing = c.materials.filter((id) => hasMat(id) && (st?.materials?.[id] ?? 0) < c.need && c.get() !== id);
+      if (missing.length && list.childElementCount <= 2) list.append(el('p', { class: 'small muted', style: { gridColumn: '1 / -1', margin: '2px 0 0' } }, `Also works: ${missing.slice(0, 6).map((id) => mat(id).name.toLowerCase()).join(', ')}${missing.length > 6 ? '…' : ''}. ${mat(missing[0]).name}: ${mat(missing[0]).source}`));
       if (!list.childElementCount) list.append(el('p', { class: 'muted small' }, 'Nothing suitable in storage. Visit the village or explore.'));
       wrap.append(list, help(c.help));
       // compatibility hint between primary and secondary

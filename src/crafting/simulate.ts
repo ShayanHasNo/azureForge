@@ -10,8 +10,12 @@ import { refreshDerived } from '../item/finalize';
 import { engravingPaths, pathSampleCount } from '../item/patterns';
 import type { Category, Item } from '../item/types';
 import type { MinigameResult } from '../minigames/types';
-import { APPLY, generateBlemishes } from './apply';
-import { methodOf, stagesForMethod } from './method';
+import { APPLY, generateBlemishes, STAGE_MINIGAME } from './apply';
+import { fitMaterials } from './craftStages';
+import { stagesFor, usesCraftStages } from './method';
+import { ARROW_COUNT, BOW_SECTIONS } from '../item/factory';
+
+const CORE: Record<string, true> = { design: true, materials: true, heat: true, anneal: true, fusion: true, fold: true, damascus: true, hammer: true, grind: true, inlay: true, surface: true, hilt: true, engrave: true, infusion: true, finish: true, appraisal: true };
 
 /** Synthetic result for a minigame at skill s (0..1) with natural variation. */
 export function syntheticResult(stage: string, item: Item, skill: number, r: Rng): MinigameResult {
@@ -19,6 +23,30 @@ export function syntheticResult(stage: string, item: Item, skill: number, r: Rng
   const err = 1 - score;
   const devs = (k: number) => Array.from({ length: SEGMENTS }, () => r.normal() * err * k);
   const data: Record<string, any> = {};
+  // the bowyer's, fletcher's and armourer's stages: shaped by the minigame each one runs
+  if (!(stage in CORE)) {
+    switch (STAGE_MINIGAME[stage]) {
+      case 'polish': data.zones = Array.from({ length: 8 }, () => clamp(score + r.normal() * 0.05)); break;
+      case 'hammer': data.dents = Array.from({ length: 8 }, () => clamp(Math.abs(r.normal()) * err)); break;
+      case 'fold': Object.assign(data, { layers: 4, clarity: score }); break;
+      case 'engrave': {
+        const n = pathSampleCount(engravingPaths(item.decoration.engraving.pattern, item.seed));
+        Object.assign(data, { jitter: Array.from({ length: n }, () => clamp(r.normal() * err * 1.4, -1, 1)), slips: err > 0.3 ? [Math.floor(n / 2)] : [], crispness: score });
+        break;
+      }
+      case 'tiller': {
+        const limb = () => Array.from({ length: BOW_SECTIONS }, () => clamp(r.normal() * err * 0.9 + err * 0.3, -1, 1));
+        Object.assign(data, { upper: limb(), lower: limb(), draw: clamp(1 - err * 0.25), hinge: err > 0.55 ? clamp((err - 0.55) * 2) : 0 });
+        break;
+      }
+      case 'string': data.even = score; break;
+      case 'straighten': Object.assign(data, { straight: Array.from({ length: ARROW_COUNT }, () => clamp(score + r.normal() * 0.05)), spine: Array.from({ length: ARROW_COUNT }, () => clamp(r.normal() * err * 0.7, -1, 1)) }); break;
+      case 'fletch': data.fletchErr = Array.from({ length: ARROW_COUNT }, () => clamp(r.normal() * err * 0.9, -1, 1)); break;
+      case 'stitch':
+      case 'weave': Object.assign(data, { even: Array.from({ length: 8 }, () => clamp(score + r.normal() * 0.05)), gaps: clamp(err * 0.5) }); break;
+    }
+    return { score, details: {}, data, summary: '' };
+  }
   switch (stage) {
     case 'hammer':
       Object.assign(data, { leftDev: devs(0.2), rightDev: devs(0.2), wobble: devs(0.8), dents: Array.from({ length: 8 }, () => Math.abs(r.normal()) * err) });
@@ -75,15 +103,22 @@ export interface SimSpec {
 export function simulateCraft(spec: SimSpec): Item {
   const seed = spec.seed ?? 1000;
   const item = createDraft(spec.category ?? 'sword', spec.tradition ?? 'foundry', 'Sim', 1, 'Spring', seed);
-  item.materials.primary = spec.primary;
-  item.materials.secondary = spec.secondary ?? 'brass';
-  if (spec.tradition === 'experimental') item.materials.fusedWith = 'copper';
-  spec.setup?.(item);
+  if (usesCraftStages(item)) {
+    // bows, arrows and armour: the method decides which materials fit
+    spec.setup?.(item);
+    item.materials.primary = spec.primary;
+    if (spec.secondary) item.materials.secondary = spec.secondary;
+    fitMaterials(item, () => 99);
+  } else {
+    item.materials.primary = spec.primary;
+    item.materials.secondary = spec.secondary ?? 'brass';
+    if (spec.tradition === 'experimental') item.materials.fusedWith = 'copper';
+    spec.setup?.(item);
+  }
   const r = seededRng(seed, 'sim' + spec.skill);
-  const base = tradition(item.tradition).stages;
-  for (const stage of stagesForMethod(base, methodOf(item), base)) {
+  for (const stage of stagesFor(item, tradition(item.tradition))) {
     if (stage === 'finish') item.blemishes = generateBlemishes(item);
-    if (stage === 'engrave' && item.decoration.engraving.pattern === 'none') continue;
+    if ((stage === 'engrave' || stage === 'tooling') && item.decoration.engraving.pattern === 'none') continue;
     const fn = APPLY[stage];
     if (!fn) continue;
     const res = syntheticResult(stage, item, spec.skill, r);

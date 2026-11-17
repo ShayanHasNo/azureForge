@@ -126,7 +126,8 @@ class Polish extends BaseMinigame {
     this.sl = env.item.shield ? shieldLayout(env.item) : { cx: this.W / 2, cy: this.H / 2, rx: this.W * 0.4, ry: this.H * 0.4 };
     // ---- view
     if (this.isShield) {
-      this.xf = { cx: 240, cy: 140, s: 2, rot: false, W: this.W, H: this.H };
+      // a long piece without a blade (a bow stave) is laid on its side
+      this.xf = { cx: 240, cy: 140, s: 2, rot: this.H > this.W * 1.6, W: this.W, H: this.H };
       this.pieceLen = this.sl.ry * 2;
     } else {
       const lay = bladeLayout(env.item);

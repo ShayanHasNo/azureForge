@@ -43,7 +43,7 @@ export function openCollection(app: App, initial = 'mine') {
     mk('filter', 'Show', [['all', 'All'], ['fav', 'Favourites'], ['master', 'Masterpieces (85+)'], ['displayed', 'On display']]);
     mk('mat', 'Material', [['all', 'Any'], ...mats.map((x) => [x, mat(x).name] as [string, string])]);
     mk('trad', 'Tradition', [['all', 'Any'], ...TRADITIONS.map((x) => [x.id, x.name] as [string, string])]);
-    mk('cat', 'Type', [['all', 'Any'], ['sword', 'Swords'], ['dagger', 'Daggers'], ['shield', 'Shields']]);
+    mk('cat', 'Type', [['all', 'Any'], ['sword', 'Swords'], ['dagger', 'Daggers'], ['shield', 'Shields'], ['bow', 'Bows'], ['arrows', 'Arrows']]);
     const grid = el('div', { class: 'grid auto-grid' });
     body.append(bar, grid);
     function draw() {

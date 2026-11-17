@@ -7,6 +7,7 @@ import { SEGMENTS } from '../item/factory';
 import type { Blemish, Item } from '../item/types';
 import type { MinigameResult } from '../minigames/types';
 import { describeDamascus, rareColor, rollDamascus } from '../item/damascus';
+import { CRAFT_STAGES } from './craftStages';
 
 const arr = (v: any, n: number, fill = 0): number[] => (Array.isArray(v) ? v.slice(0, n).map(Number) : new Array(n).fill(fill));
 
@@ -99,10 +100,20 @@ export const APPLY: Record<string, ApplyFn> = {
   },
 };
 
+// The bowyer's, fletcher's and armourer's stages: each records its score under the part of
+// craftsmanship it counts toward, then writes its own result into the piece.
+for (const [id, st] of Object.entries(CRAFT_STAGES)) {
+  APPLY[id] = (item, r) => {
+    item.quality[st.quality] = r.score; // no method uses the same slot twice (tests check this)
+    st.apply?.(item, r);
+  };
+}
+
 /** Map stage → minigame id. */
 export const STAGE_MINIGAME: Record<string, string> = {
   heat: 'heat', anneal: 'anneal', fusion: 'fusion', fold: 'fold', damascus: 'fold', hammer: 'hammer', grind: 'grind',
   inlay: 'assembly', surface: 'polish', hilt: 'assembly', engrave: 'engrave', infusion: 'constellation', finish: 'inspect',
+  ...Object.fromEntries(Object.entries(CRAFT_STAGES).map(([id, st]) => [id, st.minigame])),
 };
 
 /**

@@ -12,7 +12,8 @@ import type { Category, Item, StageRecord } from '../item/types';
 import { gradeOf, QUIRKS, type MinigameResult } from '../minigames/types';
 import { APPLY, generateBlemishes, STAGE_MINIGAME } from './apply';
 import { materialNeeds, STAGES, StageCtx, stonesNeeded } from './stages';
-import { methodOf, stagesForMethod } from './method';
+import { methodOf, stagesFor, usesCraftStages } from './method';
+import { fitMaterials } from './craftStages';
 
 export class CraftSession {
   item: Item;
@@ -31,7 +32,12 @@ export class CraftSession {
     } else {
       this.trad = tradition(traditionId);
       this.item = createDraft(category!, traditionId, state.playerName, state.day, seasonOf(state.day));
-      this.stages = [...this.trad.stages];
+      this.stages = stagesFor(this.item, this.trad);
+      if (usesCraftStages(this.item)) {
+        // bows, arrows and armour: start from materials the chosen method uses and the player owns
+        fitMaterials(this.item, (id) => state.materials[id] ?? 0);
+        return;
+      }
       // Sensible starting materials the player actually owns.
       const prim = this.trad.primaries.find((m) => (state.materials[m] ?? 0) >= 3) ?? this.trad.primaries[0];
       this.item.materials.primary = prim;
@@ -103,9 +109,11 @@ export class CraftSession {
   commitDecisions(): string | null {
     const err = this.validate();
     if (err) return err;
-    if (this.stage === 'design') {
+    if (this.stage === 'design' || (this.stage === 'materials' && usesCraftStages(this.item))) {
+      // the method (and, for some crafts, the material) decides the stages that follow
+      if (this.stage === 'design' && usesCraftStages(this.item)) fitMaterials(this.item, (id) => this.state.materials[id] ?? 0);
+      this.stages = stagesFor(this.item, this.trad, this.stages);
       const method = methodOf(this.item);
-      this.stages = stagesForMethod(this.stages, method, this.trad.stages);
       if (method !== 'damascus') delete this.item.surface.damascus;
       if (method === 'damascus' && this.item.surface.texture === 'layered') this.item.surface.texture = 'smooth';
     }

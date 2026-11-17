@@ -119,7 +119,8 @@ class Inspect extends BaseMinigame {
     this.preview = cloneItem(item);
     this.spr = this.sprite(this.preview);
     const W = this.spr.width, H = this.spr.height;
-    const blade = !!item.blade && item.category !== 'shield';
+    // long pieces (blades, bows) are laid on their side so they fit the bench
+    const blade = (!!item.blade && item.category !== 'shield') || H > W * 1.6;
     const s = blade ? (item.category === 'dagger' ? 4 : 3) : 3;
     this.base = [240, 138];
     this.xf = { cx: this.base[0], cy: this.base[1], s, rot: blade, W, H };

@@ -27,6 +27,7 @@ import { cloneItem } from '../item/factory';
 import { engravingPaths, type Path } from '../item/patterns';
 import type { Item } from '../item/types';
 import { bladePixel, shieldLayout } from '../render/itemRenderer';
+import { armorToolingGeo } from '../render/crafts';
 import { BaseMinigame, COLORS, MH, MW } from './base';
 import { gradeOf, type MinigameDef, type MinigameEnv } from './types';
 
@@ -134,6 +135,7 @@ class Engrave extends BaseMinigame {
   private shieldGeo() {
     const it = this.env.item;
     if (it.shield) return shieldLayout(it);
+    if (it.armor) return armorToolingGeo(it);
     return { cx: 43.5, cy: 51, rx: 40, ry: 46, W: 88, H: 104 };
   }
 

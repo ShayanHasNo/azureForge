@@ -1,6 +1,7 @@
 // Open-ended villager requests. Each is evaluated against the actual item
 // (its tags, stats, and the asker's own tastes), never a checklist of exact options.
 
+import type { Category } from '../item/types';
 import { hash32, seededRng } from '../core/rng';
 import type { ItemStats } from '../item/types';
 import type { Item } from '../item/types';
@@ -11,7 +12,7 @@ export interface RequestTemplate {
   npc: string;
   text: string;
   hint: string;
-  category?: 'sword' | 'dagger' | 'shield';
+  category?: Category;
   likes: Record<string, number>;
   stats?: Partial<Record<keyof ItemStats, number>>;
   reward: { gold: number; rep: number; rel: number; materials?: Record<string, number>; journal?: string; extra?: string };

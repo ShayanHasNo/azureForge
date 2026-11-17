@@ -420,6 +420,9 @@ export const UNIT_COST: Record<string, { primary: number; secondary: number; gri
   sword: { primary: 3, secondary: 1, grip: 1 },
   dagger: { primary: 2, secondary: 1, grip: 1 },
   shield: { primary: 3, secondary: 2, grip: 1 },
+  bow: { primary: 2, secondary: 1, grip: 1 },
+  arrows: { primary: 2, secondary: 1, grip: 2 },
+  armor: { primary: 4, secondary: 1, grip: 2 },
 };
 
 /** Mastery XP thresholds per level. */

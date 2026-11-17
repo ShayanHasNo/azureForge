@@ -18,11 +18,14 @@ src/
   data/        materials.ts · options.ts (all creative options + gates) · traditions.ts · workshop.ts (decor/tools)
   item/        types.ts (THE item data structure) · factory.ts · patterns.ts (engraving geometry, emblems)
                stats.ts (bounded stat model) · describe.ts (names, descriptions, tags) · finalize.ts
-  render/      pixel.ts (DOM-free RGBA buffer) · itemRenderer.ts (layered procedural sprites)
+  render/      pixel.ts (DOM-free RGBA buffer) · itemRenderer.ts (layered procedural sprites: blades, shields)
+               crafts.ts (bows, arrow sets) · legacy/ (the frozen original renderer, for version-1 pieces)
   crafting/    stages.ts (data-driven stage controls) · session.ts (pipeline) · apply.ts (results → item)
-               simulate.ts (headless pipeline for balance tests)
+               method.ts (which stages a piece goes through) · craftStages.ts (the bowyer's and fletcher's
+               stages, materials and design choices) · stageTypes.ts · simulate.ts (headless pipeline for tests)
   minigames/   types.ts (contract) · base.ts (framework) · hammer, heat, anneal, fusion, fold, grind,
-               polish, engrave, assembly, constellation, inspect · index.ts (registry)
+               polish, engrave, assembly, constellation, inspect, tiller, string, straighten, fletch
+               · index.ts (registry)
   game/        state.ts (state + calendar) · save.ts (versioned save/backup/export) · progress.ts
   village/     npcs.ts (villagers + reactions) · requests.ts · world.ts (merchants, exploration, journals)
   audio/       types.ts (contract) · audio.ts (synth engine)
@@ -73,8 +76,8 @@ Adding new content:
 `item/types.ts` holds the following fields:
 
 - **Identity:** `id`, `seed`, `version`, `category`, `tradition`, `name`/`customName`, `creator`, and the in-game and real creation dates.
-- **Design:** `design` (`direction`, `motif`, `palette`, `intents`), `materials` (`primary`, `secondary`, `grip`, `fusedWith`) and `structure.approach`.
-- **Geometry:** `blade` (`length`, `width`, `profile`, `tip`, `curve`, `thickness`, `fuller`, `leftDev[]`/`rightDev[]`/`wobble[]` per-segment deviations, `asymmetry`), `shield` (`shape`, size, `rim`, `boss`, face material, `planks`, `dents[]`, `rimGap`), and `hilt` (`guard`, `grip`, `wrap`, `pommel`, plus the assembly offsets and tilt).
+- **Design:** `design` (`direction`, `motif`, `palette`, `intents`, and `method` — Damascus for daggers, the construction method for bows), `materials` (`primary`, `secondary`, `grip`, `fusedWith`) and `structure.approach`.
+- **Geometry** (one per category; all lengths in logical pixels): `bow` (`profile`, `length`, `limb`, per-section stiffness error `upper[6]`/`lower[6]` from tillering, `draw`, `hinge`, `backing`, `belly`, `glue`, `string`, `stringQuality`, `nock`), `arrows` (`count`, `length`, `point`, `fletch`, `nock`, `binding`, `crest`, and per-arrow `straight[6]`, `spine[6]`, `fletchErr[6]`, plus `pointQuality`), `blade` (`length`, `width`, `profile`, `tip`, `curve`, `thickness`, `fuller`, `leftDev[]`/`rightDev[]`/`wobble[]` per-segment deviations, `asymmetry`), `shield` (`shape`, size, `rim`, `boss`, face material, `planks`, `dents[]`, `rimGap`), and `hilt` (`guard`, `grip`, `wrap`, `pommel`, plus the assembly offsets and tilt).
 - **Surface and decoration:** `surface` (`texture`, polish `zones[8]`, fold `layers`/`clarity`, `fusion`), `decoration` (engraving `pattern` with the player's traced `jitter[]`, `slips[]` and `crispness`; `inscription`; `gems`; `emblem`; set `stones`; infused `constellation`) and `finish`.
 - **Craft record:** `quality` (per-stage performance from 0 to 1), `blemishes` (the flaws left after inspection), `mutations`, and `history` (every stage's choices plus its minigame record: `score`, `grade`, `difficulty`, `details`, `summary`).
 - **Derived (recomputable):** `stats`, `tags`, `description`.
@@ -83,7 +86,7 @@ Saving stores this structure verbatim. The tests confirm that a JSON round-trip 
 
 ## Visual specification
 
-- The workshop is drawn at an internal resolution of 320×180. Item sprites are 64×176 (swords), 48×112 (daggers) and 88×104 (shields), with a coloured "selout" outline and 4×4 Bayer dithering between palette shades.
+- The workshop is drawn at an internal resolution of 320×180. Item sprites are 64×176 (swords), 48×112 (daggers), 88×104 (shields), 56×176 (bows) and 96×128 (arrow sets) logical pixels, drawn at `RENDER_SCALE` = 2 device pixels each, with a coloured "selout" outline and 4×4 Bayer dithering between palette shades.
 - The palette is warm and earthy. Each material has its own hand-picked 6-shade ramp.
 - Sprites are built in 8 layers:
   1. Silhouette, from profile, tip, deviations, curve and asymmetry.
@@ -111,7 +114,13 @@ Saving stores this structure verbatim. The tests confirm that a JSON round-trip 
 | Assembly (hilt/inlay/rim) | Hilt, Mountain stone setting | positional and rotational alignment | guard/pommel offsets and tilt, stone placements, rim gap |
 | Engrave | Decoration | perpendicular deviation, smoothness, completion | per-sample jitter, slips, crispness |
 | Constellation | Celestial infusion | link precision and order | star points, brightness |
+| Tiller | Bows | scraping each limb section to an even bend at the target draw weight; over-scraping leaves a hinge | `bow.upper[]`/`lower[]`, `draw`, `hinge` |
+| String | Bows | timing and side of each twist | `bow.stringQuality` |
+| Straighten | Arrows | choosing matching spines, then easing out each shaft's bend | `arrows.spine[]`, `arrows.straight[]` |
+| Fletch | Arrows | angle of each of three vanes on each shaft (the jig copies the first arrow) | `arrows.fletchErr[]` |
 | Inspect | Final finishing | flaws found, care. Two tools: a loupe, and a raking lamp that makes flaws glint at the right light angle (blemishes carry a `depth`; faint ones are drawn at low contrast) | removes found blemishes |
+
+Bows and arrows reuse existing minigames for their other stages (roughing a stave is a polish pass, toasting the belly is the heat game, gluing laminations is the fold game, curing is the anneal game, forging or knapping points is the hammer game). `crafting/craftStages.ts` holds the table: each stage names its minigame, the craftsmanship slot it scores, and how its result is written into the piece.
 
 Difficulty runs from 0 (Relaxed) to 4 (Master). It comes from the tradition tier, the material's workability and the player's setting. Difficulty changes tolerances and complexity, such as extra zones, fold counts, ideal-heat shifts and rhythm styles, rather than only speed. The Experimental tradition adds quirks: mirrored, drifting, bursts, flicker or generous.
 
@@ -161,3 +170,20 @@ Progression in this design expands possibilities. It never inflates stats.
 - **Material mastery** comes from crafting with a material. Each metal unlocks 3 exclusive options.
 - **Tools** unlock daggers, shields, the bellows mechanic, the wheel/reflective texture, the loupe and engraving patterns, fine fittings, gem slots and the collection room.
 - **Challenges** are mastery goals that reward returning to common materials.
+
+## Adding a category
+
+Categories are closed over by the compiler: `Category` in `item/types.ts` is a union and the per-category tables are `Record<Category, …>`, so a new one will not build until each of these is filled in.
+
+1. `item/types.ts`: add to `Category`, add a geometry interface and an optional field on `Item`.
+2. `item/factory.ts`: `CATEGORY_INFO` (name, sprite size, ranges), a branch in `createDraft`, and `CRAFTABLE` (what the workshop actually offers).
+3. `crafting/method.ts`: the stage list. `crafting/craftStages.ts`: design controls, the material plan, and one `CRAFT_STAGES` row per new stage. `data/traditions.ts`: the stage ids and their `STAGE_INFO`.
+4. `minigames/`: any new minigame, registered in `index.ts`. A stage can reuse an existing one with different `params`.
+5. `render/crafts.ts`: the sprite, and where blemishes sit on it (`craftBlemishPoint`). `visualKey` in `itemRenderer.ts` must include every field the sprite reads.
+6. `item/stats.ts` (weight, stat formulas, `HEADLINE_STATS`, `STAT_LABELS`) and `item/describe.ts` (noun, description, tags).
+7. `showcase/sanitize.ts`: whitelist the new geometry. Everything this file imports must stay DOM-free and use `.js` import extensions, because the Vercel function loads it.
+8. `crafting/simulate.ts`: synthetic results for any new minigame, so the balance tests can drive it.
+9. `data/workshop.ts` (the tool that unlocks it), `data/materials.ts` (`UNIT_COST`), `ui/screens/crafting.ts` (the unlock and blurb in the new-piece dialog), `ui/screens/collection.ts` (the type filter).
+10. Tests (`tests/crafts.test.ts` is the model) and a craft in `scripts/e2e.mjs`.
+
+**Body armour is drafted but shelved.** Its types, stages (six construction methods), two minigames (`stitch`, `weave`), stats and a first-pass sprite are in the tree, but it is left out of `CRAFTABLE`: it cannot be started, has no tool for sale, and the showcase rejects it. The sprite and the two minigames have not been play-tested in the game. To finish it, review `drawArmor` in `render/crafts.ts`, add its tool back to `data/workshop.ts`, add `'armor'` to `CRAFTABLE`, and extend the tests and the e2e.

@@ -60,7 +60,8 @@ class Hammer extends BaseMinigame {
 
   constructor(env: MinigameEnv) {
     super(env);
-    this.isShield = env.item.category === 'shield';
+    // anything without a blade (shields, armour, arrow points) is worked round its edge in eight sectors
+    this.isShield = !env.item.blade;
     this.segs = this.isShield ? 8 : SEGMENTS;
     this.strikesPerSeg = Math.round(this.tune(2, 3));
     this.halfW = this.tune(0.1, 0.038);

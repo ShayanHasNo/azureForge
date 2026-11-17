@@ -49,7 +49,7 @@ Every minigame supports mouse, touch and keyboard. Its controls are shown before
 ## What's in the game
 
 - **Crafting pipeline.** Concept & design, materials, material preparation, shaping, structural refinement, surface treatment, handle & fittings, decoration, final finishing, then inspection & appraisal. Every stage records your choices and measured performance in the item's history.
-- **11 skill minigames:**
+- **15 skill minigames:**
   - timing-based hammering, in six rhythm styles
   - heat management (with a bellows mechanic once you own one)
   - glass annealing
@@ -60,6 +60,10 @@ Every minigame supports mouse, touch and keyboard. Its controls are shown before
   - engraving by tracing
   - component assembly and stone setting
   - constellation infusion
+  - tillering a bow on the tillering tree: scrape each limb until both bend evenly at your draw weight
+  - twisting a bowstring to the swing of a weight
+  - bend-testing and straightening arrow shafts
+  - fletching: three feathers a third of a turn apart, the cock feather square to the nock
   - flaw inspection, with a loupe and a raking **inspection lamp**: about half of all flaws are too faint to see by eye, and only glint when the lamp's light comes from the right side
 - **6 crafting traditions**, each with its own stage sequence, minigame styles, materials and decorative language:
   - Traditional Foundry
@@ -72,6 +76,14 @@ Every minigame supports mouse, touch and keyboard. Its controls are shown before
 - **Hi-res pixel art.** Sprites are drawn at twice the old resolution: same proportions, finer pixels, with crisp bevels, carved engraving and faceted gems. Pieces made before the change are **legacy** pieces: they keep their original look forever and carry a Legacy tag.
 - **Procedural sprites** built in 8 layers: silhouette, material shading, secondary details, 15 textures, hilt and wrap, decoration (your traced engraving, inscription, emblems, gems, stones, constellations), 16 finishes, and effects.
 - **Sword, dagger and shield** item categories, each with its own statistics.
+- **Bows.** Buy the *Tillering Tree* to make bows by four real methods, each with its own stages and materials:
+  - a **self bow** from a single stave, its belly toasted over the fire;
+  - a **backed bow**, with sinew, rawhide or hickory glued to the back;
+  - a **laminated bow**, glued up from strips of two woods;
+  - a **composite horn bow** (horn belly, wooden core, sinew back, a long slow cure), once you have read the right journal.
+
+  Longbow, flatbow, recurve and reflex shapes. The bow's drawn curve *is* your tillering: a stiff limb, a weak limb or a hinge all show in the sprite and in its draw weight, cast, smoothness and stability.
+- **Arrows**, made as a **matched set of six** with the *Fletching Jig*: spine-matched and straightened shafts, forged bodkin, broadhead or leaf points (or knapped flint), and three fletching styles. A set is judged on how alike its arrows are as well as how good each one is.
 - **Damascus daggers.** Choose the *Damascus* forging method for a dagger to stack, fold and etch two metals. Every Damascus dagger carries one of **1000 numbered patterns**, fixed by its steel: every #437 looks like every other #437, and a few indexes are named. Your forging and etching, plus a little luck, decide the pattern's **visibility**. Even flawless work never shows it at 100%. A handful of metal pairings can, very rarely, bloom into a **prized colour**. The finished dagger gets a certificate with its index, visibility and colour, and *Collection → Damascus index* tracks which of the 1000 patterns you've forged. Damascus is purely cosmetic: it never changes stats or value.
 - **Market showcase.** Show any finished piece to other players from its inspection page, and browse everyone's pieces, newest or rarest, in *Village → Showcase*.
 - **A village** with nine villagers. Each has their own tastes and story, and reacts to the actual properties of what you show them. Villagers post open-ended requests ("something that reminds me of the mountains…").
@@ -110,7 +122,7 @@ This runs renderer determinism, balance simulations, save round-trips and progre
 npm run sim
 ```
 
-For a full browser playthrough with screenshots:
+For a full browser playthrough with screenshots (a sword, a Damascus dagger, a bow, a set of arrows, then one piece from every tradition; `QUICK=1` stops after the arrows):
 
 ```bash
 npm run e2e

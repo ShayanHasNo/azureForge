@@ -61,6 +61,8 @@ export const UPGRADES: UpgradeDef[] = [
   { id: 'finebench', name: 'Fine Workbench', cost: 110, desc: 'A bench with vices and fine tools.', effect: 'Unlocks ring guards, wire wraps and a second gem slot.' },
   { id: 'gemsetter', name: 'Gem-setter\'s Kit', cost: 80, desc: 'Prongs, bezels and patience.', effect: 'Allows gems on the guard and blade as well as the pommel.' },
   { id: 'shieldframe', name: 'Shield Frame', cost: 150, desc: 'A jig for planking and rimming shields.', effect: 'Unlocks shields.', reputation: 6 },
+  { id: 'tillertree', name: 'Tillering Tree', cost: 70, desc: 'A notched post with a pulley and a long view of the limbs.', effect: 'Unlocks bows.', reputation: 2 },
+  { id: 'fletchjig', name: 'Fletching Jig', cost: 45, desc: 'A little clamp that holds a feather true while the glue sets.', effect: 'Unlocks arrows; once the first arrow of a set is fletched, the rest follow it more closely.' },
   { id: 'collectionroom', name: 'Collection Room', cost: 220, desc: 'Open up the back room as a gallery.', effect: 'Adds a gallery room with 12 more display plinths.', reputation: 10 },
 ];
 

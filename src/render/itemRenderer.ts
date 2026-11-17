@@ -22,15 +22,16 @@ import type { Item } from '../item/types';
 import { PixelImage } from './pixel';
 import { isLegacy } from '../item/types';
 import { renderLegacy } from './legacy/rendererV1';
+import { craftBlemishPoint, renderCraft } from './crafts';
 
 export type View = 'front' | 'back' | 'profile';
 
-const L_EMPTY = 0, L_BLADE = 1, L_GUARD = 2, L_GRIP = 3, L_WRAP = 4, L_POMMEL = 5, L_GEM = 6, L_ENGRAVE = 7, L_STONE = 8, L_FACE = 9, L_RIM = 10, L_BOSS = 11, L_EMBLEM = 12;
+export const L_EMPTY = 0, L_BLADE = 1, L_GUARD = 2, L_GRIP = 3, L_WRAP = 4, L_POMMEL = 5, L_GEM = 6, L_ENGRAVE = 7, L_STONE = 8, L_FACE = 9, L_RIM = 10, L_BOSS = 11, L_EMBLEM = 12;
 const METAL_LAYERS = new Set([L_BLADE, L_GUARD, L_POMMEL, L_RIM, L_BOSS]);
 
 const BAYER4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((v) => (v + 0.5) / 16);
 
-class Canvas {
+export class Canvas {
   layer: Uint8Array;
   pal: Uint8Array;
   shade: Float32Array;
@@ -88,12 +89,12 @@ class Canvas {
   }
 }
 
-function matPalette(id: string | undefined, fallback = 'iron'): string[] {
+export function matPalette(id: string | undefined, fallback = 'iron'): string[] {
   if (id && hasMat(id)) return mat(id).palette;
   return mat(fallback).palette;
 }
 
-interface Ctx {
+export interface Ctx {
   item: Item;
   c: Canvas;
   seed: number;
@@ -128,7 +129,7 @@ const CACHE_MAX = 220;
 export function visualKey(item: Item, view: View): string {
   const v = {
     v: item.version ?? 1, c: item.category, s: item.seed, d: item.design, m: item.materials, st: item.structure, b: item.blade, sh: item.shield,
-    h: item.hilt, su: item.surface, de: item.decoration, f: item.finish, bl: item.blemishes, mu: item.mutations, view,
+    h: item.hilt, bw: item.bow, ar: item.arrows, am: item.armor, su: item.surface, de: item.decoration, f: item.finish, bl: item.blemishes, mu: item.mutations, view,
   };
   return JSON.stringify(v);
 }
@@ -150,6 +151,7 @@ export function renderItemAt(item: Item, view: View, k: number): PixelImage {
   if (hit) return hit;
   // Pieces made before the hi-res renderer keep their original pixels forever.
   const img = isLegacy(item) ? renderLegacy(item, view)
+    : item.category === 'bow' || item.category === 'arrows' || item.category === 'armor' ? renderCraft(item, view, k)
     : view === 'profile' ? renderProfile(item, k) : item.category === 'shield' ? renderShield(item, view, k) : renderBladed(item, view, k);
   if (cache.size >= CACHE_MAX) {
     let n = 0;
@@ -290,7 +292,7 @@ function epx(bm: string[]): string[] {
 
 const upCache = new Map<string, string[]>();
 /** Upscale a bitmap by an integer factor (EPX for each doubling, nearest for the rest). */
-function upscaleBitmap(bm: string[], f: number): string[] {
+export function upscaleBitmap(bm: string[], f: number): string[] {
   if (f <= 1) return bm;
   const key = f + ':' + bm.join('/');
   const hit = upCache.get(key);
@@ -342,7 +344,7 @@ function renderBladed(item: Item, view: View, k: number): PixelImage {
   return view === 'back' ? img.mirrored() : img;
 }
 
-function makeCtx(item: Item, c: Canvas, view: View, k: number): Ctx {
+export function makeCtx(item: Item, c: Canvas, view: View, k: number): Ctx {
   const dp = designPalette(item.design.palette);
   const P = c.addPalette('P', matPalette(item.materials.primary));
   const S = c.addPalette('S', matPalette(item.materials.secondary, 'brass'));
@@ -419,7 +421,7 @@ function zoneQuality(item: Item, t: number): number {
   return clamp(sampleCurve(z, t), 0, 1);
 }
 
-function drawSurfaceTexture(ctx: Ctx) {
+export function drawSurfaceTexture(ctx: Ctx) {
   const { item, c, seed, k } = ctx;
   const tex = item.surface.texture;
   const clarity = item.surface.patternClarity;
@@ -799,7 +801,7 @@ function bladePoint(item: Item, lay: BladeLayout, t: number, u: number, k: numbe
   return [row.center + u * w * 0.78, lay.bladeBase - t * item.blade!.length * k];
 }
 
-function line(x0: number, y0: number, x1: number, y1: number, f: (x: number, y: number) => void) {
+export function line(x0: number, y0: number, x1: number, y1: number, f: (x: number, y: number) => void) {
   x0 = Math.round(x0); y0 = Math.round(y0); x1 = Math.round(x1); y1 = Math.round(y1);
   const dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0);
   const sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
@@ -982,7 +984,7 @@ function gemPalette(c: Canvas, gem: string) {
   return c.addPalette('gem:' + gem, matPalette(gem, 'quartz'));
 }
 
-function drawGem(ctx: Ctx, gx: number, gy: number, gem: string, big = false) {
+export function drawGem(ctx: Ctx, gx: number, gy: number, gem: string, big = false) {
   const { c, S, k } = ctx;
   const gp = gemPalette(c, gem);
   if (k === 1) {
@@ -1048,7 +1050,7 @@ function drawMutationsShade(ctx: Ctx) {
   }
 }
 
-function drawFinishShade(ctx: Ctx) {
+export function drawFinishShade(ctx: Ctx) {
   const { item, c, seed, k } = ctx;
   const f = item.finish.finish;
   const per = 4 * k;
@@ -1077,10 +1079,12 @@ function drawFinishShade(ctx: Ctx) {
 /** Where a blemish sits on the sprite (device pixels). */
 function blemishPoint(item: Item, w: number, h: number, lay: BladeLayout | null, t: number, u: number, k: number): [number, number] {
   if (lay && item.blade) return bladePoint(item, lay, t, u, k);
+  const craft = craftBlemishPoint(item, t, u, k);
+  if (craft) return craft;
   return [w / 2 + u * w * 0.32, h * (0.15 + t * 0.7)];
 }
 
-function drawBlemishes(ctx: Ctx, lay: BladeLayout | null) {
+export function drawBlemishes(ctx: Ctx, lay: BladeLayout | null) {
   const { item, c, k } = ctx;
   for (const bl of item.blemishes) {
     let [x, y] = blemishPoint(item, c.w, c.h, lay, bl.t, bl.u, k);
@@ -1381,7 +1385,7 @@ function renderProfile(item: Item, k: number): PixelImage {
 }
 
 // ============================================================ compose
-function compose(ctx: Ctx): PixelImage {
+export function compose(ctx: Ctx): PixelImage {
   const { c, item, seed, k } = ctx;
   const img = new PixelImage(c.w, c.h);
   const f = item.finish.finish;

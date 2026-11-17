@@ -93,7 +93,7 @@ class Heat extends BaseMinigame {
   constructor(env: MinigameEnv) {
     super(env);
     this.prep = env.material.prep ?? DEFAULT_PREP;
-    this.isShield = env.item.category === 'shield';
+    this.isShield = !env.item.blade; // drawn upright, not laid across the coals like a blade
     this.hasBellows = env.upgrades.includes('bellows');
     this.halfW = clamp(this.prep.band * this.tune(1.15, 0.6) * (env.quirk === 'bursts' ? 1.3 : 1), 0.035, 0.25);
     this.centre = clamp(this.prep.ideal, this.halfW + 0.05, 0.95 - this.halfW);

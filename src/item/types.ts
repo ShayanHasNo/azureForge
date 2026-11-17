@@ -4,7 +4,7 @@
 import type { StageId } from '../data/traditions.js';
 import type { DamascusData } from './damascus.js';
 
-export type Category = 'sword' | 'dagger' | 'shield';
+export type Category = 'sword' | 'dagger' | 'shield' | 'bow' | 'arrows' | 'armor';
 /**
  * Item data version. Version 1 pieces were made before the hi-res renderer and
  * are "legacy": they keep their original look forever (render/legacy).
@@ -40,6 +40,66 @@ export interface ShieldGeometry {
   /** dents / bumps around the face from hammering (0..1 magnitudes) */
   dents: number[];
   rimGap: number; // assembly misalignment of rim, px
+}
+
+/** A bow, seen from the side: the stave arcs away from the string. Lengths are in logical sprite pixels. */
+export interface BowGeometry {
+  profile: string; // longbow | flatbow | recurve | reflex
+  length: number; // nock to nock
+  /** Limb thickness at the grip (px). */
+  limb: number;
+  /** Stiffness error of each limb section after tillering, grip → tip (-1 weak/hinged … +1 stiff). */
+  upper: number[];
+  lower: number[];
+  /** Draw weight reached, as a fraction of what the stave could give (0..1). */
+  draw: number;
+  /** Worst hinge left in a limb (0 none … 1 severe). */
+  hinge: number;
+  /** Backing strip material (sinew, rawhide, hickory…), or ''. */
+  backing: string;
+  /** Horn belly material (composite bows), or ''. */
+  belly: string;
+  /** Evenness of the backing / lamination glue line (0..1). */
+  glue: number;
+  /** Bowstring fibre and how evenly it was twisted (0..1). */
+  string: string;
+  stringQuality: number;
+  /** Horn nock overlays, or '' for self nocks. */
+  nock: string;
+  gripMaterial: string;
+  wrapColor: string;
+}
+
+/** A matched set of arrows. Arrays hold one value per arrow. */
+export interface ArrowsGeometry {
+  count: number;
+  length: number; // shaft length, px
+  point: string; // bodkin | broadhead | leaf | flint
+  fletch: string; // parabolic | shield | traditional
+  nock: string; // '' self nock, or a horn id
+  binding: string; // thread material
+  crest: string; // crest colour (hex)
+  /** How straight each shaft is (0..1). */
+  straight: number[];
+  /** Spine (stiffness) of each shaft relative to the set's target (-1..1; 0 = matched). */
+  spine: number[];
+  /** Fletching alignment error of each arrow (-1..1). */
+  fletchErr: number[];
+  /** How cleanly the points were made (0..1). */
+  pointQuality: number;
+}
+
+/** Body armour, drawn front-on. */
+export interface ArmorGeometry {
+  method: string; // gambeson | cuirbouilli | mail | scale | brigandine | plate
+  cut: string; // vest | jack | coat
+  /** Evenness of the repeated work (stitches, links, lacing, rivets) in 8 bands, top → bottom (0..1). */
+  even: number[];
+  /** Fraction of the repeated work that went wrong: skipped stitches, mis-linked rings, proud rivets (0..1). */
+  gaps: number;
+  /** Dents / lumps left by forming, in 8 sectors (0..1). */
+  dents: number[];
+  trimColor: string;
 }
 
 export interface HiltConfig {
@@ -115,6 +175,7 @@ export interface StageRecord {
   at: number; // real timestamp
 }
 
+/** Scores of the stages a piece went through. Crafts map their own stages onto these (e.g. tillering → structure). */
 export interface StageQuality {
   prep?: number;
   fold?: number;
@@ -151,8 +212,25 @@ export interface ItemStats {
   uniqueness: number;
   collectorAppeal: number;
   intentFulfillment: number;
-  coverage: number; // shields
+  coverage: number; // shields, armour
   compactness: number; // daggers
+  // bows
+  drawWeight?: number; // pounds
+  cast?: number;
+  smoothness?: number;
+  stability?: number;
+  // arrows
+  consistency?: number;
+  straightness?: number;
+  flight?: number;
+  penetration?: number;
+  // armour
+  protection?: number;
+  protCut?: number;
+  protPierce?: number;
+  protBlunt?: number;
+  mobility?: number;
+  comfort?: number;
   rarity: number; // 0..100
   rarityLabel: string;
   value: number; // gold
@@ -172,11 +250,15 @@ export interface Item {
   createdDay: number; // in-game day
   createdSeason: string;
   createdAt: number; // real timestamp
-  design: { direction: string; motif: string; palette: string; intents: string[]; method?: 'standard' | 'damascus' };
+  /** `method` is the forging / construction method: 'damascus' for daggers, a bow or armour method, or undefined. */
+  design: { direction: string; motif: string; palette: string; intents: string[]; method?: string };
   materials: { primary: string; secondary: string; grip: string; fusedWith?: string };
   structure: { approach: string };
   blade?: BladeGeometry;
   shield?: ShieldGeometry;
+  bow?: BowGeometry;
+  arrows?: ArrowsGeometry;
+  armor?: ArmorGeometry;
   hilt?: HiltConfig;
   surface: SurfaceConfig;
   decoration: DecorationConfig;

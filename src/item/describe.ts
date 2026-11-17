@@ -23,6 +23,7 @@ const MAT_WORDS: Record<string, string[]> = {
 const SUFFIX = ['song', 'fang', 'warden', 'light', 'thorn', 'keeper', 'whisper', 'fall', 'mark', 'heart', 'call', 'ward', 'tide', 'bloom', 'brand'];
 const NOUNS: Record<string, string[]> = {
   sword: ['Blade', 'Sword', 'Brand', 'Edge', 'Longblade'], dagger: ['Dagger', 'Knife', 'Fang', 'Thorn', 'Dirk'], shield: ['Shield', 'Ward', 'Bulwark', 'Aegis', 'Guard'],
+  bow: ['Bow', 'Stave', 'Bough', 'Bender'], arrows: ['Sheaf', 'Flight', 'Quiver', 'Arrows'], armor: ['Coat', 'Harness', 'Ward', 'Mantle'],
 };
 const DIRECTION_ADJ: Record<string, string[]> = {
   elegant: ['Graceful', 'Slender', 'Willow'], heavy: ['Stout', 'Heavy', 'Broad'], ornamental: ['Gilded', 'Ornate', 'Adorned'], minimalist: ['Plain', 'Quiet', 'Clean'],
@@ -34,8 +35,10 @@ const PLACES = ['the Hollow', 'Low Mill', 'the Ridge', 'the Long Field', 'Saltbr
 export function generateName(item: Item): string {
   const r = seededRng(item.seed, 'name');
   const motif = MOTIF_WORDS[item.design.motif] ?? MOTIF_WORDS.none;
-  const mw = MAT_WORDS[item.materials.primary] ?? ['Iron'];
-  let nouns = NOUNS[item.category];
+  const mw = MAT_WORDS[item.materials.primary] ?? (hasMat(item.materials.primary) ? [mat(item.materials.primary).name.split(' ')[0]] : ['Iron']);
+  let nouns = NOUNS[item.category] ?? ['Work'];
+  if (item.bow) nouns = [...nouns, { longbow: 'Longbow', flatbow: 'Flatbow', recurve: 'Recurve', reflex: 'Hornbow' }[item.bow.profile] ?? 'Bow'];
+  if (item.armor) nouns = [...nouns, ...({ gambeson: ['Gambeson', 'Aketon'], cuirbouilli: ['Cuirass', 'Jerkin'], mail: ['Hauberk', 'Byrnie'], scale: ['Scale Coat', 'Lamellar'], brigandine: ['Brigandine', 'Coat of Plates'], plate: ['Cuirass', 'Breastplate'] }[item.armor.method] ?? [])];
   if (item.blade?.profile === 'curved') nouns = [...nouns, 'Saber'];
   if (item.blade?.profile === 'falchion') nouns = [...nouns, 'Falchion'];
   if (item.blade?.profile === 'wavy') nouns = [...nouns, 'Flamberge'];
@@ -74,7 +77,56 @@ function grip(item: Item) {
   return `${gm}${wrap}`;
 }
 
+/** Descriptions for bows, arrows and armour: what it is, how it was built, and how the making went. */
+function craftDescription(item: Item): string {
+  const s = item.stats ?? computeStats(item);
+  const nm = (id?: string) => (id && hasMat(id) ? mat(id).name.toLowerCase() : '');
+  const gradeAdj: Record<string, string> = { Legendary: 'breathtaking', Masterwork: 'masterful', Superior: 'superbly made', Fine: 'finely made', Serviceable: 'serviceable', Rough: 'roughly made but honest' };
+  const art = /^[aeiou]/i.test(gradeAdj[s.grade]) ? 'An' : 'A';
+  const parts: string[] = [];
+  if (item.bow) {
+    const b = item.bow;
+    const kind = { self: 'self bow', backed: `${nm(b.backing) || 'sinew'}-backed bow`, laminated: 'laminated bow', composite: 'composite horn bow' }[item.design.method ?? 'self'] ?? 'bow';
+    const shape = { longbow: 'a tall, deep-bellied longbow', flatbow: 'a wide-limbed flatbow', recurve: 'a recurve, its tips swept forward', reflex: 'a reflex-deflex bow, its handle set back' }[b.profile] ?? 'a bow';
+    parts.push(`${art} ${gradeAdj[s.grade]} ${kind} of ${nm(item.materials.primary)}: ${shape}${b.belly ? `, with a belly of ${nm(b.belly)}` : ''}${item.design.method === 'laminated' && b.backing ? `, backed with a strip of ${nm(b.backing)}` : ''}.`);
+    const errs = [...b.upper, ...b.lower].map((e) => Math.abs(e));
+    const even = 1 - errs.reduce((p, v) => p + v, 0) / Math.max(1, errs.length) / 0.55;
+    parts.push(b.hinge > 0.3 ? 'One limb has a hinge where too much wood came off — it will shoot, but it should not be drawn hard.'
+      : even > 0.85 ? 'Both limbs bend in one clean, even arc from grip to nock.' : even > 0.6 ? 'The limbs bend evenly, with a flat spot here and there.' : 'The limbs are still stiff in places, and do not quite match.');
+    parts.push(`It draws about ${s.drawWeight ?? 40} pounds, strung with ${nm(b.string) || 'linen'}${b.stringQuality > 0.85 ? ' twisted tight and even' : b.stringQuality < 0.5 ? ' that is loose in places' : ''}${b.nock ? `, with ${nm(b.nock)} nocks` : ''}, and the grip is bound in ${nm(b.gripMaterial) || 'leather'}.`);
+  } else if (item.arrows) {
+    const a = item.arrows;
+    const head = { bodkin: 'bodkin points', broadhead: 'barbed broadheads', leaf: 'slim leaf points', flint: 'knapped stone points' }[a.point] ?? 'points';
+    const vane = { parabolic: 'low parabolic', shield: 'shield-cut', traditional: 'long triangular' }[a.fletch] ?? '';
+    parts.push(`${art} ${gradeAdj[s.grade]} set of ${a.count} arrows: ${nm(item.materials.primary)} shafts, ${head} of ${nm(item.materials.secondary)}, and ${vane} fletchings of ${nm(item.materials.grip)} bound with ${nm(a.binding) || 'thread'}.`);
+    const st = a.straight.reduce((p, v) => p + v, 0) / Math.max(1, a.straight.length);
+    parts.push(st > 0.88 ? 'Every shaft is straight as a ray.' : st > 0.7 ? 'Most of the shafts are true; one or two still carry a slight bow.' : 'Several shafts still bow to one side.');
+    parts.push((s.consistency ?? 0) > 80 ? 'They are closely matched in spine and fletching, and will fly alike.' : (s.consistency ?? 0) > 55 ? 'They are a fair match for one another.' : 'They are a mixed lot: each will fly a little differently.');
+    if (a.nock) parts.push(`The nocks are reinforced with slivers of ${nm(a.nock)}.`);
+  } else if (item.armor) {
+    const a = item.armor;
+    const kind = { gambeson: 'quilted gambeson', cuirbouilli: 'cuirass of hardened leather', mail: 'coat of riveted mail', scale: 'coat of laced scales', brigandine: 'brigandine', plate: 'plate cuirass' }[a.method] ?? 'armour';
+    const cut = { vest: 'cut short and sleeveless', jack: 'hip-length, with short sleeves', coat: 'skirted to the thigh' }[a.cut] ?? '';
+    const of = a.method === 'brigandine' ? `${nm(item.materials.primary)} plates under ${nm(item.materials.grip)}, studded with ${nm(item.materials.secondary)} rivets`
+      : a.method === 'gambeson' ? `${nm(item.materials.primary)} stuffed with ${nm(item.materials.grip)}`
+      : a.method === 'scale' ? `${nm(item.materials.primary)} laced with ${nm(item.materials.grip)}` : nm(item.materials.primary);
+    parts.push(`${art} ${gradeAdj[s.grade]} ${kind} of ${of}, ${cut}.`);
+    const even = a.even.reduce((p, v) => p + v, 0) / Math.max(1, a.even.length);
+    const work = { gambeson: 'stitching', cuirbouilli: 'strap-work', mail: 'links', scale: 'lacing', brigandine: 'rivets', plate: 'riveting' }[a.method] ?? 'work';
+    parts.push(even > 0.85 && a.gaps < 0.08 ? `The ${work} ${work.endsWith('s') ? 'are' : 'is'} close, even and without a gap.` : even > 0.65 ? `The ${work} ${work.endsWith('s') ? 'are' : 'is'} sound, a little uneven in places.` : `The ${work} ${work.endsWith('s') ? 'wander' : 'wanders'}, and ${a.gaps > 0.2 ? 'there are gaps a point could find' : 'shows the hand that made it'}.`);
+    const dent = a.dents.reduce((p, v) => p + v, 0) / Math.max(1, a.dents.length);
+    if (['plate', 'cuirbouilli'].includes(a.method)) parts.push(dent < 0.12 ? 'Its surface is smooth and true.' : dent < 0.3 ? 'A few low hammer marks remain.' : 'It is still lumpy from the forming.');
+    parts.push(`It turns ${(s.protCut ?? 0) >= (s.protBlunt ?? 0) ? 'a cut better than a blow' : 'a blow better than a cut'}, and ${(s.mobility ?? 0) > 70 ? 'moves easily with the body' : (s.mobility ?? 0) > 50 ? 'is no great burden to wear' : 'is heavy to move in'}.`);
+  }
+  const e = item.decoration.engraving;
+  if (e.pattern !== 'none') parts.push(`It is tooled with a ${optionName('engraving', e.pattern).toLowerCase()} pattern${e.crispness > 0.8 ? ', cut with real precision' : ''}.`);
+  if (item.decoration.emblem !== 'none') parts.push(`It bears a ${optionName('emblem', item.decoration.emblem).toLowerCase()} emblem.`);
+  if (item.blemishes.length) parts.push(`${item.blemishes.length === 1 ? 'A single small flaw remains' : `${item.blemishes.length} small flaws remain`} — honest signs of the hand that made it.`);
+  return parts.join(' ');
+}
+
 export function generateDescription(item: Item): string {
+  if (item.bow || item.arrows || item.armor) return craftDescription(item);
   const s = item.stats ?? computeStats(item);
   const r = seededRng(item.seed, 'desc');
   const P = mat(item.materials.primary);
@@ -160,7 +212,9 @@ export const MUTATION_WORDS: Record<string, string> = {
 
 export function computeTags(item: Item): string[] {
   const t = new Set<string>(collectDesignTags(item));
-  for (const id of [item.materials.primary, item.materials.secondary, item.materials.fusedWith, item.hilt?.gripMaterial]) if (id && hasMat(id)) mat(id).traits.forEach((x) => t.add(x));
+  for (const id of [item.materials.primary, item.materials.secondary, item.materials.fusedWith, item.hilt?.gripMaterial, item.bow?.backing, item.bow?.belly, item.arrows || item.armor || item.bow ? item.materials.grip : undefined]) if (id && hasMat(id)) mat(id).traits.forEach((x) => t.add(x));
+  t.add(item.category);
+  if (item.design.method) t.add(item.design.method);
   for (const g of item.decoration.gems) if (hasMat(g.gem)) mat(g.gem).traits.forEach((x) => t.add(x));
   for (const st of item.decoration.stones) if (hasMat(st.stone)) mat(st.stone).traits.forEach((x) => t.add(x));
   palette(item.design.palette).tags.forEach((x) => t.add(x));

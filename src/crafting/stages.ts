@@ -14,46 +14,18 @@ import type { GameState } from '../game/state';
 import { CATEGORY_INFO } from '../item/factory';
 import type { Item } from '../item/types';
 import { RARE_COLORS } from '../item/damascus';
-import { methodOf, traditionAllowsDamascus } from './method';
+import { methodOf, traditionAllowsDamascus, usesCraftStages } from './method';
+import { CRAFT_STAGES, craftDesignControls, craftMaterialControls, craftMaterialNeeds, craftStageDef } from './craftStages';
+import type { CoreStageId, CraftStageId } from '../data/traditions';
 
-export interface StageCtx {
-  item: Item;
-  state: GameState;
-  tradition: TraditionDef;
-}
-
-export type Control =
-  | { kind: 'options'; key: string; label: string; options: OptionDef[]; get: () => string; set: (id: string) => void; help?: string }
-  | { kind: 'multi'; key: string; label: string; options: OptionDef[]; max: number; get: () => string[]; set: (ids: string[]) => void; help?: string }
-  | { kind: 'slider'; key: string; label: string; min: number; max: number; step: number; get: () => number; set: (v: number) => void; format?: (v: number) => string; help?: string }
-  | { kind: 'swatches'; key: string; label: string; swatches: { id: string; name: string; hex: string }[]; get: () => string; set: (id: string) => void }
-  | { kind: 'materials'; key: string; label: string; materials: string[]; need: number; get: () => string; set: (id: string) => void; allowNone?: boolean; help?: string }
-  | { kind: 'text'; key: string; label: string; max: number; get: () => string; set: (v: string) => void; placeholder?: string }
-  | { kind: 'toggle'; key: string; label: string; get: () => boolean; set: (v: boolean) => void; help?: string }
-  | { kind: 'gems'; key: string; label: string; slots: string[]; max: number; gems: string[]; get: () => { slot: string; gem: string }[]; set: (v: { slot: string; gem: string }[]) => void }
-  | { kind: 'info'; key: string; html: string };
-
-export interface StageDef {
-  id: StageId;
-  controls: (ctx: StageCtx) => Control[];
-  minigame?: (ctx: StageCtx) => { id: string; params: Record<string, any> } | null;
-  validate?: (ctx: StageCtx) => string | null;
-}
-
-/** Filter + annotate options by availability (unavailable ones are shown locked). */
-export function withAvailability(list: OptionDef[], ctx: StageCtx): (OptionDef & { locked?: string })[] {
-  return list
-    .filter((o) => !o.gate?.categories || o.gate.categories.includes(ctx.item.category))
-    .map((o) => {
-      const a = optionAvailable(o, ctx.state, ctx.tradition.id, ctx.item.category);
-      return a.ok ? o : { ...o, locked: a.reason };
-    });
-}
+export { withAvailability } from './stageTypes';
+export type { Control, StageCtx, StageDef } from './stageTypes';
+import { withAvailability, type Control, type StageCtx, type StageDef } from './stageTypes';
 
 const owned = (s: GameState, id: string) => s.materials[id] ?? 0;
 const isBlade = (i: Item) => i.category !== 'shield';
 
-export const STAGES: Record<StageId, StageDef> = {
+const CORE_STAGES: Record<CoreStageId, StageDef> = {
   design: {
     id: 'design',
     controls: (ctx) => {
@@ -74,7 +46,10 @@ export const STAGES: Record<StageId, StageDef> = {
         },
         { kind: 'multi', key: 'intents', label: 'Intended qualities (up to two)', options: INTENTS, max: 2, get: () => item.design.intents, set: (v) => (item.design.intents = v), help: 'At appraisal, the piece is judged on whether it became what you intended.' },
       );
-      if (isBlade(item)) {
+      if (usesCraftStages(item)) {
+        // bows, arrows and armour choose their construction first: it decides everything after
+        c.unshift(...craftDesignControls(ctx));
+      } else if (isBlade(item)) {
         c.push({ kind: 'options', key: 'profile', label: 'Silhouette', options: PROFILES, get: () => item.blade!.profile, set: (v) => (item.blade!.profile = v) });
         c.push({ kind: 'options', key: 'tip', label: 'Tip', options: TIPS, get: () => item.blade!.tip, set: (v) => (item.blade!.tip = v) });
         const info = CATEGORY_INFO[item.category];
@@ -88,7 +63,9 @@ export const STAGES: Record<StageId, StageDef> = {
 
   materials: {
     id: 'materials',
-    controls: ({ item, state, tradition }) => {
+    controls: (ctx) => {
+      const { item, state, tradition } = ctx;
+      if (usesCraftStages(item)) return craftMaterialControls(ctx);
       const cost = UNIT_COST[item.category];
       const damascus = methodOf(item) === 'damascus';
       const primaries = tradition.primaries.filter((m) => hasMat(m));
@@ -112,6 +89,7 @@ export const STAGES: Record<StageId, StageDef> = {
     validate: ({ item, state, tradition }) => {
       const need = materialNeeds(item);
       for (const [id, n] of Object.entries(need)) if (owned(state, id) < n) return `You need ${n} ${mat(id).name} (you have ${owned(state, id)}). Visit the village or explore.`;
+      if (usesCraftStages(item)) return null;
       if (tradition.id === 'experimental' && !item.materials.fusedWith) return 'Choose a metal to fuse.';
       if (methodOf(item) === 'damascus') {
         if (item.materials.secondary === item.materials.primary) return 'Damascus needs two different metals — choose a contrasting secondary.';
@@ -281,7 +259,8 @@ export const STAGES: Record<StageId, StageDef> = {
   finish: {
     id: 'finish',
     controls: (ctx) => {
-      const c: Control[] = [{ kind: 'options', key: 'finish', label: 'Final finish', options: withAvailability(FINISHES, ctx), get: () => ctx.item.finish.finish, set: (v) => (ctx.item.finish.finish = v) }];
+      const list = finishesFor(ctx.item);
+      const c: Control[] = [{ kind: 'options', key: 'finish', label: 'Final finish', options: withAvailability(list, ctx), get: () => ctx.item.finish.finish, set: (v) => (ctx.item.finish.finish = v) }];
       if (ctx.item.finish.finish === 'glow')
         c.push({ kind: 'swatches', key: 'glow', label: 'Glow colour', swatches: PALETTES.map((p) => ({ id: p.glow, name: p.name, hex: p.glow })), get: () => ctx.item.finish.glowColor ?? palette(ctx.item.design.palette).glow, set: (v) => (ctx.item.finish.glowColor = v) });
       return c;
@@ -297,6 +276,23 @@ export const STAGES: Record<StageId, StageDef> = {
   },
 
   appraisal: { id: 'appraisal', controls: () => [] },
+};
+
+/**
+ * Finishes that suit the piece. Metal work gets them all; wood, leather and cloth only take the
+ * plain ones (a glow or a mirror polish means nothing on a quilted coat).
+ */
+function finishesFor(item: Item): OptionDef[] {
+  if (!usesCraftStages(item)) return FINISHES;
+  const metal = hasMat(item.materials.primary) && mat(item.materials.primary).kind === 'metal';
+  if (item.category === 'armor' && metal && item.armor?.method !== 'brigandine') return FINISHES.filter((f) => !['contrast', 'etched'].includes(f.id));
+  return FINISHES.filter((f) => ['matte', 'glossy', 'aged'].includes(f.id));
+}
+
+/** Every stage: the blade-and-shield stages above plus the bowyer's, fletcher's and armourer's. */
+export const STAGES: Record<StageId, StageDef> = {
+  ...CORE_STAGES,
+  ...(Object.fromEntries((Object.keys(CRAFT_STAGES) as CraftStageId[]).map((id) => [id, craftStageDef(id)])) as Record<CraftStageId, StageDef>),
 };
 
 function hiltFallback(item: Item) {
@@ -328,6 +324,7 @@ export function stonesNeeded(sel: { count: number; stones: string[] }): Record<s
 
 /** Materials the piece consumes when work begins. */
 export function materialNeeds(item: Item): Record<string, number> {
+  if (usesCraftStages(item)) return craftMaterialNeeds(item);
   const cost = UNIT_COST[item.category];
   const need: Record<string, number> = {};
   const add = (id: string | undefined, n: number) => { if (id) need[id] = (need[id] ?? 0) + n; };
